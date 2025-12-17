@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>PlayCanvas Standalone</title>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <link rel="stylesheet" href="assets/web/asset.css"/>
+    </head>
+    <body>
+        <canvas id="application-canvas"></canvas>
+        <script src="playcanvas.min.js"></script>
+        <script type="module" src="main.js"></script>
+
+        <div id="start-screen">
+            <div class="start-image"></div>
+            <div id="start-button" role="button" tabindex="0" aria-label="Start" alt="Start"></div>
+        </div>
+
+        <div id="amenities-container"></div>
+
+        <div class="mode-panel center hidden">
+            <div class="glass-panel border-shadow"></div>
+            <div class="panel-container">
+                <div class="icon-image"></div>
+                <div class="button active" data-mode="0" data-lng="home"></div>
+                <div class="button" data-mode="1" data-lng="amenities"></div>
+                <div class="button" data-mode="Gallery" data-lng="gallery"></div>
+            </div>
+        </div>
+
+        <div class="state-panel center hidden">
+            <div class="glass-panel border-shadow"></div>
+            <div class="panel-container">
+                <div class="button active" data-state="0" data-lng="current"></div>
+                <div class="button" data-state="1" data-lng="future"></div>
+            </div>
+        </div>
+
+        <div id="info-panel">
+            <div class="glass-panel border-shadow"></div>
+            <div class="panel-container">
+            <img class="panel-image" src="assets/images/pictures/pic_loading.png" alt="Picture" />
+            <div class="panel-title">Loading data...</div>
+            <div class="panel-description">Loading data...</div>
+            </div>
+        </div>
+        
+        <div class="gallery-panel hidden">
+            <div class="gallery-dark">
+                <div class="gallery-close">×</div>
+            </div>
+            <div class="gallery-content">
+                <div class="gallery-arrow gallery-left">‹</div>
+                <img class="gallery-main-image" alt="Gallery image"/>
+                <div class="gallery-arrow gallery-right">›</div>
+            </div>
+            <div class="gallery-thumbnails"></div>
+        </div>
+
+        <div id="fullscreen-button" role="button" tabindex="0" aria-label="Fullscreen"></div>
+
+        <script>
+            const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            function resizeCanvasForiOS() {
+                if (!isiOS) return;
+                const canvas = document.getElementById('application-canvas');
+                if (!canvas) return;
+                canvas.style.width = window.innerWidth + 'px';
+                canvas.style.height = window.innerHeight + 'px';
+            }
+
+            window.addEventListener('resize', resizeCanvasForiOS);
+            window.addEventListener('orientationchange', resizeCanvasForiOS);
+            resizeCanvasForiOS();
+        </script>
+    </body>
+</html>
