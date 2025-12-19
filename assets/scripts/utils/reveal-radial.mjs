@@ -12,6 +12,13 @@ uniform vec3 uWaveTint;
 uniform float uOscillationIntensity;
 uniform float uEndRadius;
 
+uniform float uLiftHeight;
+uniform float uLiftDuration;
+uniform float uWaveWidth;
+uniform vec3 uWaveColorA;
+uniform vec3 uWaveColorB;
+uniform float uTintStrength;
+
 float g_dist;
 float g_dotWavePos;
 float g_liftTime;
@@ -39,10 +46,16 @@ void modifyCenter(inout vec3 center) {
         center.y += sin(uTime * 3.0 + phase) * uOscillationIntensity * 0.25;
     }
     
-    float distToLiftWave = abs(g_dist - g_liftWavePos);
-    if (distToLiftWave < 1.0 && g_liftTime > 0.0) {
-        float liftAmount = (1.0 - distToLiftWave) * sin(distToLiftWave * 3.14159);
-        center.y += liftAmount * uOscillationIntensity * 0.9;
+    if (g_liftTime > 0.0 && g_liftWavePos >= g_dist && uSpeed > 0.0001) {
+        float behindDist = g_liftWavePos - g_dist;
+        float since = behindDist / uSpeed;
+
+        float x = clamp(since / max(uLiftDuration, 0.0001), 0.0, 1.0);
+        float pulse = sin(3.14159265 * x);
+
+        float fade = 1.0 - x;
+
+        center.y += pulse * fade * uLiftHeight;
     }
 }
 
@@ -51,57 +64,53 @@ void modifyCovariance(vec3 originalCenter, vec3 modifiedCenter, inout vec3 covA,
         gsplatMakeRound(covA, covB, 0.0);
         return;
     }
-    
-    float scale;
-    bool isLiftWave = g_liftTime > 0.0 && g_liftWavePos > g_dist;
-    
-    if (isLiftWave) {
-        scale = (g_liftWavePos >= g_dist + 2.0) ? 1.0 : mix(0.1, 1.0, (g_liftWavePos - g_dist) * 0.5);
-    } else if (g_dist > g_dotWavePos + 1.0) {
+
+    if (g_liftTime <= 0.0) {
         gsplatMakeRound(covA, covB, 0.0);
         return;
-    } else if (g_dist > g_dotWavePos - 1.0) {
-        float distToWave = abs(g_dist - g_dotWavePos);
-        scale = (distToWave < 0.5) 
-            ? mix(0.1, 0.2, 1.0 - distToWave * 2.0)
-            : mix(0.0, 0.1, smoothstep(g_dotWavePos + 1.0, g_dotWavePos - 1.0, g_dist));
-    } else {
-        scale = 0.1;
     }
-    
-    if (scale >= 1.0) {
+
+    if (g_liftWavePos < g_dist) {
+        gsplatMakeRound(covA, covB, 0.0);
         return;
-    } else if (isLiftWave) {
-        float t = (scale - 0.1) * 1.111111; // normalize [0.1, 1.0] to [0, 1]
-        float dotSize = scale * 0.05;
-        float originalSize = gsplatExtractSize(covA, covB);
-        float finalSize = mix(dotSize, originalSize, t);
-        
-        vec3 origCovA = covA * (scale * scale);
-        vec3 origCovB = covB * (scale * scale);
-        gsplatMakeRound(covA, covB, finalSize);
-        covA = mix(covA, origCovA, t);
-        covB = mix(covB, origCovB, t);
-    } else {
-        float originalSize = gsplatExtractSize(covA, covB);
-        gsplatMakeRound(covA, covB, min(scale * 0.05, originalSize));
     }
+
+    float behind = g_liftWavePos - g_dist;
+    float t = clamp(behind / 2.0, 0.0, 1.0);
+
+    float originalSize = gsplatExtractSize(covA, covB);
+    float dotSize = min(originalSize, 0.05);
+
+    vec3 origCovA = covA;
+    vec3 origCovB = covB;
+
+    gsplatMakeRound(covA, covB, dotSize);
+    covA = mix(covA, origCovA, t);
+    covB = mix(covB, origCovB, t);
 }
 
 void modifyColor(vec3 center, inout vec4 color) {
     if (g_dist > uEndRadius) return;
-    
-    if (g_liftTime > 0.0 && g_dist >= g_liftWavePos - 1.5 && g_dist <= g_liftWavePos + 0.5) {
-        float distToLift = abs(g_dist - g_liftWavePos);
-        float liftIntensity = smoothstep(1.5, 0.0, distToLift);
-        color.rgb += uWaveTint * liftIntensity;
-    }
-    else if (g_dist <= g_dotWavePos && (g_liftTime <= 0.0 || g_dist > g_liftWavePos + 0.5)) {
-        float distToDot = abs(g_dist - g_dotWavePos);
-        float dotIntensity = smoothstep(1.0, 0.0, distToDot);
-        color.rgb += uDotTint * dotIntensity;
-    }
+    if (g_liftTime <= 0.0) return;
+
+    float d = g_dist - g_liftWavePos;
+
+    float frontPad = 0.32;
+
+    if (d > frontPad) return;
+
+    float behind = clamp((frontPad - d) / max(uWaveWidth, 0.0001), 0.0, 1.0);
+
+    float kIn  = smoothstep(0.00, 0.06, behind);
+    float kOut = 1.0 - smoothstep(0.85, 1.00, behind);
+    float k = kIn * kOut * uTintStrength;
+
+    float t = smoothstep(0.0, 0.7, behind);
+    vec3 tint = mix(uWaveColorA, uWaveColorB, t);
+
+    color.rgb = mix(color.rgb, tint, k);
 }
+
 `;
 
 const shaderWGSL = /* wgsl */`
@@ -114,6 +123,13 @@ uniform uDotTint: vec3f;
 uniform uWaveTint: vec3f;
 uniform uOscillationIntensity: f32;
 uniform uEndRadius: f32;
+
+uniform uLiftHeight: f32;
+uniform uLiftDuration: f32;
+uniform uWaveWidth: f32;
+uniform uWaveColorA: vec3f;
+uniform uWaveColorB: vec3f;
+uniform uTintStrength: f32;
 
 var<private> g_dist: f32;
 var<private> g_dotWavePos: f32;
@@ -140,15 +156,19 @@ fn modifyCenter(center: ptr<function, vec3f>) {
     
     let wavesActive = g_liftTime <= 0.0 || g_dist > g_liftWavePos - 1.5;
     if (wavesActive) {
-        // Apply oscillation with per-splat phase offset
         let phase = hash(*center) * 6.28318;
         (*center).y += sin(uniform.uTime * 3.0 + phase) * uniform.uOscillationIntensity * 0.25;
     }
     
-    let distToLiftWave = abs(g_dist - g_liftWavePos);
-    if (distToLiftWave < 1.0 && g_liftTime > 0.0) {
-        let liftAmount = (1.0 - distToLiftWave) * sin(distToLiftWave * 3.14159);
-        (*center).y += liftAmount * uniform.uOscillationIntensity * 0.9;
+    if (g_liftTime > 0.0 && g_liftWavePos >= g_dist && uniform.uSpeed > 0.0001) {
+        let behindDist = g_liftWavePos - g_dist;
+        let since = behindDist / uniform.uSpeed;
+
+        let x = clamp(since / max(uniform.uLiftDuration, 0.0001), 0.0, 1.0);
+        let pulse = sin(3.14159265 * x);
+        let fade = 1.0 - x;
+
+        (*center).y += pulse * fade * uniform.uLiftHeight;
     }
 }
 
@@ -157,61 +177,52 @@ fn modifyCovariance(originalCenter: vec3f, modifiedCenter: vec3f, covA: ptr<func
         gsplatMakeRound(covA, covB, 0.0);
         return;
     }
-    
-    var scale: f32;
-    let isLiftWave = g_liftTime > 0.0 && g_liftWavePos > g_dist;
-    
-    if (isLiftWave) {
-        scale = select(mix(0.1, 1.0, (g_liftWavePos - g_dist) * 0.5), 1.0, g_liftWavePos >= g_dist + 2.0);
-    } else if (g_dist > g_dotWavePos + 1.0) {
+
+    if (g_liftTime <= 0.0) {
         gsplatMakeRound(covA, covB, 0.0);
         return;
-    } else if (g_dist > g_dotWavePos - 1.0) {
-        let distToWave = abs(g_dist - g_dotWavePos);
-        scale = select(
-            mix(0.0, 0.1, smoothstep(g_dotWavePos + 1.0, g_dotWavePos - 1.0, g_dist)),
-            mix(0.1, 0.2, 1.0 - distToWave * 2.0),
-            distToWave < 0.5
-        );
-    } else {
-        scale = 0.1;
     }
-    
-    if (scale >= 1.0) {
+
+    if (g_liftWavePos < g_dist) {
+        gsplatMakeRound(covA, covB, 0.0);
         return;
-    } else if (isLiftWave) {
-        let t = (scale - 0.1) * 1.111111; // normalize [0.1, 1.0] to [0, 1]
-        let dotSize = scale * 0.05;
-        let originalSize = gsplatExtractSize(*covA, *covB);
-        let finalSize = mix(dotSize, originalSize, t);
-        
-        let origCovA = *covA * (scale * scale);
-        let origCovB = *covB * (scale * scale);
-        gsplatMakeRound(covA, covB, finalSize);
-        *covA = mix(*covA, origCovA, t);
-        *covB = mix(*covB, origCovB, t);
-    } else {
-        let originalSize = gsplatExtractSize(*covA, *covB);
-        gsplatMakeRound(covA, covB, min(scale * 0.05, originalSize));
     }
+
+    let behind = g_liftWavePos - g_dist;
+    let t = clamp(behind / 2.0, 0.0, 1.0);
+
+    let originalSize = gsplatExtractSize(*covA, *covB);
+    let dotSize = min(originalSize, 0.05);
+
+    let origCovA = *covA;
+    let origCovB = *covB;
+
+    gsplatMakeRound(covA, covB, dotSize);
+    *covA = mix(*covA, origCovA, t);
+    *covB = mix(*covB, origCovB, t);
 }
 
 fn modifyColor(center: vec3f, color: ptr<function, vec4f>) {
-    if (g_dist > uniform.uEndRadius) {
-        return;
-    }
-    
-    if (g_liftTime > 0.0 && g_dist >= g_liftWavePos - 1.5 && g_dist <= g_liftWavePos + 0.5) {
-        let distToLift = abs(g_dist - g_liftWavePos);
-        let liftIntensity = smoothstep(1.5, 0.0, distToLift);
-        (*color) = vec4f((*color).rgb + uniform.uWaveTint * liftIntensity, (*color).a);
-    }
-    else if (g_dist <= g_dotWavePos && (g_liftTime <= 0.0 || g_dist > g_liftWavePos + 0.5)) {
-        let distToDot = abs(g_dist - g_dotWavePos);
-        let dotIntensity = smoothstep(1.0, 0.0, distToDot);
-        (*color) = vec4f((*color).rgb + uniform.uDotTint * dotIntensity, (*color).a);
-    }
+    if (g_dist > uniform.uEndRadius) { return; }
+    if (g_liftTime <= 0.0) { return; }
+
+    let d = g_dist - g_liftWavePos;
+
+    let frontPad = 0.32;
+    if (d > frontPad) { return; }
+
+    let behind = clamp((frontPad - d) / max(uniform.uWaveWidth, 0.0001), 0.0, 1.0);
+
+    let kIn  = smoothstep(0.00, 0.06, behind);
+    let kOut = 1.0 - smoothstep(0.85, 1.00, behind);
+    let k = kIn * kOut * uniform.uTintStrength;
+
+    let t = smoothstep(0.0, 0.7, behind);
+    let tint = mix(uniform.uWaveColorA, uniform.uWaveColorB, t);
+
+    (*color) = vec4f(mix((*color).rgb, tint, k), (*color).a);
 }
+
 `;
 
 class GsplatRevealRadial extends GsplatShaderEffect {
@@ -222,6 +233,10 @@ class GsplatRevealRadial extends GsplatShaderEffect {
     _dotTintArray = [0, 0, 0];
 
     _waveTintArray = [0, 0, 0];
+
+    _waveColorAArray = [0, 0, 0];
+    
+    _waveColorBArray = [0, 0, 0];
 
     center = new Vec3(0, 0, 0);
 
@@ -238,6 +253,17 @@ class GsplatRevealRadial extends GsplatShaderEffect {
     oscillationIntensity = 0.1;
 
     endRadius = 25;
+    waveColorA = new Color(1, 1, 1);
+    waveColorB = new Color(0.1, 0.35, 1.0);
+    tintStrength = 0.9;
+    liftHeight = 0.12;
+    liftDuration = 0.45;
+    liftHeightStart = 1.0;
+    liftHeightEnd = 10.0;
+    waveWidth = 1.2;
+    waveWidthStart = 1.2;
+    waveWidthEnd = 10.0;
+
 
     getShaderGLSL() {
         return shaderGLSL;
@@ -273,6 +299,38 @@ class GsplatRevealRadial extends GsplatShaderEffect {
         this._waveTintArray[1] = this.waveTint.g;
         this._waveTintArray[2] = this.waveTint.b;
         this.setUniform('uWaveTint', this._waveTintArray);
+
+        let wavePos;
+
+        if (this.acceleration !== 0) {
+            wavePos = this.speed * effectTime + 0.5 * this.acceleration * effectTime * effectTime;
+        } else {
+            wavePos = this.speed * effectTime;
+        }
+
+        const progress = pc.math.clamp(wavePos / this.endRadius, 0, 1);
+
+        const eased = progress * progress;
+
+        this.liftHeight = pc.math.lerp(this.liftHeightStart, this.liftHeightEnd, eased);
+        const wProg = pc.math.clamp((progress - 0.10) / 0.90, 0, 1);
+        this.waveWidth = pc.math.lerp(this.waveWidthStart, this.waveWidthEnd, wProg);
+
+
+        this.setUniform('uLiftHeight', this.liftHeight);
+        this.setUniform('uLiftDuration', this.liftDuration);
+        this.setUniform('uWaveWidth', this.waveWidth);
+        this.setUniform('uTintStrength', this.tintStrength);
+
+        this._waveColorAArray[0] = this.waveColorA.r;
+        this._waveColorAArray[1] = this.waveColorA.g;
+        this._waveColorAArray[2] = this.waveColorA.b;
+        this.setUniform('uWaveColorA', this._waveColorAArray);
+
+        this._waveColorBArray[0] = this.waveColorB.r;
+        this._waveColorBArray[1] = this.waveColorB.g;
+        this._waveColorBArray[2] = this.waveColorB.b;
+        this.setUniform('uWaveColorB', this._waveColorBArray);
 
         this.setUniform('uOscillationIntensity', this.oscillationIntensity);
         this.setUniform('uEndRadius', this.endRadius);

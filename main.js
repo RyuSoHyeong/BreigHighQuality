@@ -45,8 +45,8 @@ Object.values(assetMap).forEach(a => app.assets.add(a));
 scriptAssets.forEach(a => app.assets.add(a));
 
 const assetList = [
-    { asset: assetMap.galleryCsv, size: 490 * 1024 },
-    { asset: assetMap.currentPly, size: 6.88 * 1024 * 1024 },
+    { asset: assetMap.galleryCsv, size: 1024 },
+    { asset: assetMap.currentPly, size: 598 * 1024 },
     { asset: scriptAssets[0], size: 1024 },
     { asset: scriptAssets[1], size: 3 * 1024 },
     { asset: scriptAssets[2], size: 3 * 1024 },
@@ -85,31 +85,41 @@ function createScene() {
     gsplatCurrent.addComponent('script');
     const reveal = gsplatCurrent.script.create(GsplatRevealRadial);
     reveal.center.set(0, 0, 0);
-    reveal.speed = 20;
-    reveal.acceleration = 0;
+    reveal.speed = 10;
+    reveal.acceleration = 20;
     reveal.delay = 1.5;
-    reveal.oscillationIntensity = 0.2;
-    reveal.endRadius = 200;
+    reveal.waveColorA = new pc.Color(1, 1, 1);
+    reveal.waveColorB = new pc.Color(0.55, 0.78, 0.94);
+    reveal.tintStrength = 1;
+    reveal.liftHeight = 2;
+    reveal.liftHeightStart = 0;
+    reveal.liftHeightEnd = 3;
+    reveal.liftDuration = 1;
+    reveal.waveWidth = 3;
+    reveal.waveWidthStart = 3;
+    reveal.waveWidthEnd = 20;
+    reveal.oscillationIntensity = 0.5;
+    reveal.endRadius = 300;
 
     Root.addChild(gsplatCurrent);
 
     const gs = gsplatCurrent.gsplat;
 
-    if (isMobile) {
-        app.scene.gsplat.lodRangeMin = 2;
-        app.scene.gsplat.lodRangeMax = 2;
-        gs.splatBudget = 400000;
-        gs.lodDistances = [8, 14, 25];
-    } else if (isTablet) {
-        app.scene.gsplat.lodRangeMin = 2;
-        app.scene.gsplat.lodRangeMax = 2;
-        gs.splatBudget = 400000;
-        gs.lodDistances = [10, 16, 30];
+    if (isMobile()) {
+        app.scene.gsplat.lodRangeMin = 1;
+        app.scene.gsplat.lodRangeMax = 3;
+        gs.splatBudget = 500000;
+        gs.lodDistances = [10, 15, 20, 25];
+    } else if (isTablet()) {
+        app.scene.gsplat.lodRangeMin = 1;
+        app.scene.gsplat.lodRangeMax = 3;
+        gs.splatBudget = 500000;
+        gs.lodDistances = [10, 15, 20, 25];
     } else {
         app.scene.gsplat.lodRangeMin = 0;
-        app.scene.gsplat.lodRangeMax = 2;
+        app.scene.gsplat.lodRangeMax = 3;
         gs.splatBudget = 3000000;
-        gs.lodDistances = [20, 40, 60];
+        gs.lodDistances = [20, 40, 60, 80];
     }
 
     gsplatCurrent.addComponent("script");
@@ -146,6 +156,10 @@ function waitForInitialSplats(gs, minCount = 1000) {
     });
 }
 
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function startApp() {
     if (appStarted) return;
     appStarted = true;
@@ -157,6 +171,8 @@ function startApp() {
         assetList,
         async () => {
             const gs = createScene();
+            setSplashProgress(1);
+            await delay(500);
             hideSplash();
             app.start();
 
@@ -169,20 +185,10 @@ function startApp() {
 
             const startScreen = document.getElementById("start-screen");
             if (startScreen) {
-                startScreen.remove();   
+                startScreen.remove();
             }
 
             await waitForInitialSplats(gs, 1500);
-
-            if (isMobile) {
-                app.scene.gsplat.lodRangeMin = 1;
-                gs.splatBudget = 500000;
-            };
-            if (isTablet) {
-                app.scene.gsplat.lodRangeMin = 1;
-                gs.splatBudget = 800000;
-                gs.lodDistances = [10, 16, 30];
-            }
 
             document.querySelector('.mode-panel')?.classList.remove('hidden');
             //document.querySelector('.state-panel')?.classList.remove('hidden');
