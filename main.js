@@ -3,6 +3,7 @@ import { setupFullscreenButton } from './assets/scripts/utils/fullscreen.js';
 import { loadLanguage } from './assets/scripts/utils/language.js';
 import { GsplatRevealRadial } from './assets/scripts/utils/reveal-radial.mjs';
 import { isMobile, isTablet } from './assets/scripts/utils/detect.js';
+import { delay, loadLODSmooth } from './assets/scripts/utils/functions.js';
 
 const canvas = document.getElementById('application-canvas');
 
@@ -105,22 +106,10 @@ function createScene() {
 
     const gs = gsplatCurrent.gsplat;
 
-    if (isMobile()) {
-        app.scene.gsplat.lodRangeMin = 1;
-        app.scene.gsplat.lodRangeMax = 3;
-        gs.splatBudget = 500000;
-        gs.lodDistances = [10, 15, 20, 25];
-    } else if (isTablet()) {
-        app.scene.gsplat.lodRangeMin = 1;
-        app.scene.gsplat.lodRangeMax = 3;
-        gs.splatBudget = 500000;
-        gs.lodDistances = [10, 15, 20, 25];
-    } else {
-        app.scene.gsplat.lodRangeMin = 0;
-        app.scene.gsplat.lodRangeMax = 3;
-        gs.splatBudget = 3000000;
-        gs.lodDistances = [20, 40, 60, 80];
-    }
+    app.scene.gsplat.lodRangeMin = 1;
+    app.scene.gsplat.lodRangeMax = 3;
+    gs.splatBudget = 500000;
+    gs.lodDistances = [10, 15, 20, 25];
 
     gsplatCurrent.addComponent("script");
     gsplatCurrent.script.create("stateSwitcher", {
@@ -142,24 +131,6 @@ function createScene() {
     return gs;
 }
 
-function waitForInitialSplats(gs, minCount = 1000) {
-    return new Promise(resolve => {
-        const check = () => {
-            const count = app.stats.frame.gsplats || 0;
-            if (count >= minCount) {
-                resolve();
-            } else {
-                requestAnimationFrame(check);
-            }
-        };
-        check();
-    });
-}
-
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 function startApp() {
     if (appStarted) return;
     appStarted = true;
@@ -171,6 +142,12 @@ function startApp() {
         assetList,
         async () => {
             const gs = createScene();
+
+            if (!isMobile() && !isTablet()) {
+                setTimeout(() => {
+                    loadLODSmooth(app, gs, { duration: 5000 });
+                }, 7000);
+            }
             setSplashProgress(1);
             await delay(500);
             hideSplash();
@@ -187,8 +164,6 @@ function startApp() {
             if (startScreen) {
                 startScreen.remove();
             }
-
-            await waitForInitialSplats(gs, 1500);
 
             document.querySelector('.mode-panel')?.classList.remove('hidden');
             //document.querySelector('.state-panel')?.classList.remove('hidden');
