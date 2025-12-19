@@ -13,7 +13,6 @@ export function loadLODSmooth(app, gs, options = {}) {
 
     const startTime = performance.now();
     const gsplat = app.scene.gsplat;
-    gs.lodDistances = [20, 40, 60, 80];
 
     function step() {
         const t = Math.min((performance.now() - startTime) / duration, 1);
