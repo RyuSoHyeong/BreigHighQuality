@@ -144,7 +144,7 @@ function startApp() {
             const gs = createScene();
 
             if (!isMobile() && !isTablet()) {
-                gs.lodDistances = [4, 8, 12, 25];
+                gs.lodDistances = [2, 4, 12, 16];
                 setTimeout(() => {
                     gs.lodDistances = [20, 40, 60, 80];
                     loadLODSmooth(app, gs, { duration: 5000 });
@@ -160,7 +160,7 @@ function startApp() {
             app.scene.gsplat.radialSorting = true;
             app.scene.gsplat.lodUpdateDistance = 2;
             app.scene.gsplat.lodUnderfillLimit = 5;
-            app.scene.gsplat.colorizeLod = true;
+            //app.scene.gsplat.colorizeLod = true;
 
             const startScreen = document.getElementById("start-screen");
             if (startScreen) {
