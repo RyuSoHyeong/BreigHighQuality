@@ -78,7 +78,7 @@ const DEVICE_PROFILES = {
     desktop: {
         enableUpgrade: true,
         upgradeDelayMs: 7000,
-        upgradedLodDistances: [20, 40, 60, 80, 100],
+        upgradedLodDistances: [20, 35, 50, 65, 80],
         lodSmooth: { duration: 5000, endBudget: 2000000, endLodMin: 0 }
     }
 };
