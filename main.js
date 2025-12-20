@@ -3,7 +3,7 @@ import { setupFullscreenButton } from './assets/scripts/utils/fullscreen.js';
 import { loadLanguage } from './assets/scripts/utils/language.js';
 import { GsplatRevealRadial } from './assets/scripts/utils/reveal-radial.mjs';
 import { isMobile, isTablet } from './assets/scripts/utils/detect.js';
-import { delay, loadLODSmooth, mapAssetProgress, waitForGsplatsGate, createDebugStatsOverlayUpdater, getDeviceProfile, finalizeStart } from './assets/scripts/utils/functions.js';
+import { delay, loadLODSmooth, mapAssetProgress, waitForGsplatsGate, createDebugStatsOverlayUpdater, getDeviceProfile, finalizeStart, createSmoothProgress } from './assets/scripts/utils/functions.js';
 
 const canvas = document.getElementById('application-canvas');
 
@@ -160,6 +160,8 @@ async function startApp() {
 
     createSplash();
 
+    const smoothProgress = createSmoothProgress(setSplashProgress, { speed: 10 });
+
     loadAssets(
         app,
         assetList,
@@ -199,19 +201,19 @@ async function startApp() {
             waitForGsplatsGate(app, {
                 threshold: gsplatsOnScreenThreshold,
                 assetProgressWeight,
-                onProgress: (p) => setSplashProgress(p),
-                onReady: () => finalizeStart({
-                    reveal,
-                    setSplashProgress,
-                    hideSplash,
-                    setupFullscreenButton,
-                    loadLanguage
-                })
+                onProgress: (p) => smoothProgress.setTarget(p),
+                onReady: async () => {
+                    smoothProgress.setNow(1);
+
+                    await delay(200);
+
+                    finalizeStart({ reveal, setSplashProgress, hideSplash, setupFullscreenButton, loadLanguage});
+                }
             });
 
             await delay(0);
         },
-        (p) => setSplashProgress(mapAssetProgress(p, assetProgressWeight))
+        (p) => smoothProgress.setTarget(mapAssetProgress(p, assetProgressWeight))
     );
 }
 

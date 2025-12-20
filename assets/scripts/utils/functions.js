@@ -2,6 +2,59 @@ export function delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export function createSmoothProgress(setProgress, options = {}) {
+    const {
+        speed = 8,
+        snapEps = 0.001
+    } = options;
+
+    let current = 0;
+    let target = 0;
+    let running = false;
+    let lastTime = performance.now();
+
+    const tick = () => {
+        if (!running) return;
+
+        const now = performance.now();
+        const dt = Math.min(0.05, (now - lastTime) / 1000);
+        lastTime = now;
+
+        const k = 1 - Math.exp(-speed * dt);
+        current = current + (target - current) * k;
+
+        if (Math.abs(target - current) <= snapEps) {
+            current = target;
+        }
+
+        setProgress(current);
+
+        if (current !== target) {
+            requestAnimationFrame(tick);
+        } else {
+            running = false;
+        }
+    };
+
+    return {
+        setTarget(value01) {
+            const v = Math.max(0, Math.min(1, value01));
+            target = Math.max(target, v);
+            if (!running) {
+                running = true;
+                lastTime = performance.now();
+                requestAnimationFrame(tick);
+            }
+        },
+        setNow(value01) {
+            const v = Math.max(0, Math.min(1, value01));
+            current = v;
+            target = v;
+            setProgress(v);
+        }
+    };
+}
+
 export function clamp01(v) {
     if (!isFinite(v) || isNaN(v)) return 0;
     return Math.max(0, Math.min(1, v));
