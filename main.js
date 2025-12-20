@@ -3,13 +3,7 @@ import { setupFullscreenButton } from './assets/scripts/utils/fullscreen.js';
 import { loadLanguage } from './assets/scripts/utils/language.js';
 import { GsplatRevealRadial } from './assets/scripts/utils/reveal-radial.mjs';
 import { isMobile, isTablet } from './assets/scripts/utils/detect.js';
-import {
-    delay,
-    loadLODSmooth,
-    mapAssetProgress,
-    waitForGsplatsGate,
-    createDebugStatsOverlayUpdater
-} from './assets/scripts/utils/functions.js';
+import { delay, loadLODSmooth, mapAssetProgress, waitForGsplatsGate, createDebugStatsOverlayUpdater, getDeviceProfile, finalizeStart } from './assets/scripts/utils/functions.js';
 
 const canvas = document.getElementById('application-canvas');
 
@@ -58,10 +52,36 @@ const assetList = [
     { asset: scriptAssets[4], size: 3 * 1024 }
 ];
 
-const gsplatsOnScreenThreshold = 550000;
+const gsplatsOnScreenThreshold = 300000;
 const assetProgressWeight = 0.15;
-
 let hasStarted = false;
+
+const START_SETTINGS = {
+    lodMin: 2,
+    splatBudget: 400000,
+    lodDistances: [6, 10, 14, 18, 22]
+};
+
+const DEVICE_PROFILES = {
+    phone: {
+        enableUpgrade: true,
+        upgradeDelayMs: 7000,
+        upgradedLodDistances: [14, 20, 26, 32, 38],
+        lodSmooth: { duration: 5000, endBudget: 700000, endLodMin: 2 }
+    },
+    tablet: {
+        enableUpgrade: true,
+        upgradeDelayMs: 7000,
+        upgradedLodDistances: [14, 20, 26, 32, 38],
+        lodSmooth: { duration: 5000, endBudget: 1200000, endLodMin: 1 }
+    },
+    desktop: {
+        enableUpgrade: true,
+        upgradeDelayMs: 7000,
+        upgradedLodDistances: [20, 40, 60, 80, 100],
+        lodSmooth: { duration: 5000, endBudget: 2000000, endLodMin: 0 }
+    }
+};
 
 function createScene() {
     const root = new pc.Entity('Root');
@@ -114,11 +134,7 @@ function createScene() {
 
     const gsplatComponent = gsplatEntity.gsplat;
 
-    app.scene.gsplat.lodRangeMin = 2;
-    app.scene.gsplat.lodRangeMax = 3;
-
-    gsplatComponent.splatBudget = 500000;
-    gsplatComponent.lodDistances = [10, 15, 20, 25];
+    app.scene.gsplat.lodRangeMax = 4;
 
     gsplatEntity.addComponent('script');
     gsplatEntity.script.create('stateSwitcher', {
@@ -138,24 +154,6 @@ function createScene() {
     return { gsplatComponent, reveal };
 }
 
-function finalizeStart(reveal) {
-    setSplashProgress(1);
-    hideSplash();
-
-    const startScreen = document.getElementById('start-screen');
-    if (startScreen) startScreen.remove();
-
-    document.querySelector('.mode-panel')?.classList.remove('hidden');
-
-    if (reveal) {
-        if ('effectTime' in reveal) reveal.effectTime = 0;
-        reveal.enabled = true;
-    }
-
-    setupFullscreenButton();
-    loadLanguage();
-}
-
 async function startApp() {
     if (hasStarted) return;
     hasStarted = true;
@@ -167,6 +165,11 @@ async function startApp() {
         assetList,
         async () => {
             const { gsplatComponent, reveal } = createScene();
+            const profile = getDeviceProfile({ isMobile, isTablet, profiles: DEVICE_PROFILES });
+
+            app.scene.gsplat.lodRangeMin = START_SETTINGS.lodMin;
+            gsplatComponent.splatBudget = START_SETTINGS.splatBudget;
+            gsplatComponent.lodDistances = START_SETTINGS.lodDistances;
 
             app.start();
 
@@ -179,19 +182,31 @@ async function startApp() {
             app.scene.gsplat.lodUnderfillLimit = 5;
             //app.scene.gsplat.colorizeLod = true;
 
-            if (!isMobile() && !isTablet()) {
-                gsplatComponent.lodDistances = [2, 4, 12, 16];
+            if (profile.enableUpgrade) {
                 setTimeout(() => {
-                    gsplatComponent.lodDistances = [20, 40, 60, 80];
-                    loadLODSmooth(app, gsplatComponent, { duration: 5000 });
-                }, 7000);
+                    gsplatComponent.lodDistances = profile.upgradedLodDistances;
+
+                    loadLODSmooth(app, gsplatComponent, {
+                        duration: profile.lodSmooth.duration,
+                        startBudget: START_SETTINGS.splatBudget,
+                        endBudget: profile.lodSmooth.endBudget,
+                        startLodMin: START_SETTINGS.lodMin,
+                        endLodMin: profile.lodSmooth.endLodMin
+                    });
+                }, profile.upgradeDelayMs);
             }
 
             waitForGsplatsGate(app, {
                 threshold: gsplatsOnScreenThreshold,
                 assetProgressWeight,
                 onProgress: (p) => setSplashProgress(p),
-                onReady: () => finalizeStart(reveal)
+                onReady: () => finalizeStart({
+                    reveal,
+                    setSplashProgress,
+                    hideSplash,
+                    setupFullscreenButton,
+                    loadLanguage
+                })
             });
 
             await delay(0);

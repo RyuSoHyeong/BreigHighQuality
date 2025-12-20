@@ -101,7 +101,7 @@ export function createDebugStatsOverlayUpdater(app, options) {
         frames++;
         const now = performance.now();
 
-        if (now - lastTime < 500) return;
+        if (now - lastTime < 1000) return;
 
         fps = Math.round((frames * 1000) / (now - lastTime));
         frames = 0;
@@ -130,4 +130,29 @@ export function createDebugStatsOverlayUpdater(app, options) {
     return () => {
         app.off('update', update);
     };
+}
+
+export function getDeviceProfile({ isMobile, isTablet, profiles }) {
+    if (isMobile()) return profiles.phone;
+    if (isTablet()) return profiles.tablet;
+    return profiles.desktop;
+}
+
+export function finalizeStart({ reveal, setSplashProgress, hideSplash, setupFullscreenButton, loadLanguage}) {
+    setSplashProgress(1);
+    hideSplash();
+
+    const startScreen = document.getElementById('start-screen');
+    if (startScreen) startScreen.remove();
+
+    document.querySelector('.mode-panel')?.classList.remove('hidden');
+    document.getElementById('debug-stats')?.classList.remove('hidden');
+
+    if (reveal) {
+        if ('effectTime' in reveal) reveal.effectTime = 0;
+        reveal.enabled = true;
+    }
+
+    setupFullscreenButton();
+    loadLanguage();
 }
