@@ -114,7 +114,7 @@ function createScene() {
 
     const gsplatComponent = gsplatEntity.gsplat;
 
-    app.scene.gsplat.lodRangeMin = 1;
+    app.scene.gsplat.lodRangeMin = 2;
     app.scene.gsplat.lodRangeMax = 3;
 
     gsplatComponent.splatBudget = 500000;
@@ -177,6 +177,7 @@ async function startApp() {
             app.scene.gsplat.radialSorting = true;
             app.scene.gsplat.lodUpdateDistance = 2;
             app.scene.gsplat.lodUnderfillLimit = 5;
+            //app.scene.gsplat.colorizeLod = true;
 
             if (!isMobile() && !isTablet()) {
                 gsplatComponent.lodDistances = [2, 4, 12, 16];
