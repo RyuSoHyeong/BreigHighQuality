@@ -62,6 +62,27 @@
 
         <div id="fullscreen-button" role="button" tabindex="0" aria-label="Fullscreen"></div>
 
+        <div id="debug-stats"
+     style="
+        position: fixed;
+        left: 10px;
+        top: 10px;
+        z-index: 9999;
+        padding: 8px 10px;
+        background: rgba(0,0,0,0.55);
+        color: #00ffcc;
+        font-family: monospace;
+        font-size: 12px;
+        line-height: 1.4;
+        pointer-events: none;
+        white-space: pre;
+     ">
+FPS: --
+Splats: --
+Budget: --
+LOD: --
+</div>
+
         <script>
             const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
             function resizeCanvasForiOS() {

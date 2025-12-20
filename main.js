@@ -3,7 +3,13 @@ import { setupFullscreenButton } from './assets/scripts/utils/fullscreen.js';
 import { loadLanguage } from './assets/scripts/utils/language.js';
 import { GsplatRevealRadial } from './assets/scripts/utils/reveal-radial.mjs';
 import { isMobile, isTablet } from './assets/scripts/utils/detect.js';
-import { delay, loadLODSmooth } from './assets/scripts/utils/functions.js';
+import {
+    delay,
+    loadLODSmooth,
+    mapAssetProgress,
+    waitForGsplatsGate,
+    createDebugStatsOverlayUpdater
+} from './assets/scripts/utils/functions.js';
 
 const canvas = document.getElementById('application-canvas');
 
@@ -22,32 +28,29 @@ const app = new pc.Application(canvas, {
 
 app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
 app.setCanvasResolution(pc.RESOLUTION_AUTO);
+window.addEventListener('resize', () => app.resizeCanvas());
 
-window.addEventListener('resize', () => {
-    app.resizeCanvas();
-});
+const startButton = document.getElementById('start-button');
 
-const startButton = document.getElementById("start-button");
-
-const assetMap = {
-    galleryCsv: new pc.Asset("gallery.csv", "text", { url: "assets/data/dataGallery.csv" }),
-    currentPly: new pc.Asset("current", "gsplat", { url: "assets/gsplats/lod-meta.json" })
+const assets = {
+    galleryCsv: new pc.Asset('gallery.csv', 'text', { url: 'assets/data/dataGallery.csv' }),
+    lodMeta: new pc.Asset('lod-meta.json', 'gsplat', { url: 'assets/gsplats/lod-meta.json' })
 };
 
 const scriptAssets = [
-    new pc.Asset("adjustPixelRatio.js", "script", { url: "assets/scripts/utils/adjustPixelRatio.js" }),
-    new pc.Asset("orbitCamera.js", "script", { url: "assets/scripts/orbitCamera.js" }),
-    new pc.Asset("amenitiesMode.js", "script", { url: "assets/scripts/amenitiesMode.js" }),
-    new pc.Asset("stateSwitcher.js", "script", { url: "assets/scripts/stateSwitcher.js" }),
-    new pc.Asset("gallery.js", "script", { url: "assets/scripts/gallery.js" })
+    new pc.Asset('adjustPixelRatio.js', 'script', { url: 'assets/scripts/utils/adjustPixelRatio.js' }),
+    new pc.Asset('orbitCamera.js', 'script', { url: 'assets/scripts/orbitCamera.js' }),
+    new pc.Asset('amenitiesMode.js', 'script', { url: 'assets/scripts/amenitiesMode.js' }),
+    new pc.Asset('stateSwitcher.js', 'script', { url: 'assets/scripts/stateSwitcher.js' }),
+    new pc.Asset('gallery.js', 'script', { url: 'assets/scripts/gallery.js' })
 ];
 
-Object.values(assetMap).forEach(a => app.assets.add(a));
-scriptAssets.forEach(a => app.assets.add(a));
+Object.values(assets).forEach((a) => app.assets.add(a));
+scriptAssets.forEach((a) => app.assets.add(a));
 
 const assetList = [
-    { asset: assetMap.galleryCsv, size: 1024 },
-    { asset: assetMap.currentPly, size: 598 * 1024 },
+    { asset: assets.galleryCsv, size: 1024 },
+    { asset: assets.lodMeta, size: 598 * 1024 },
     { asset: scriptAssets[0], size: 1024 },
     { asset: scriptAssets[1], size: 3 * 1024 },
     { asset: scriptAssets[2], size: 3 * 1024 },
@@ -55,36 +58,41 @@ const assetList = [
     { asset: scriptAssets[4], size: 3 * 1024 }
 ];
 
-let appStarted = false;
+const gsplatsOnScreenThreshold = 550000;
+const assetProgressWeight = 0.15;
+
+let hasStarted = false;
 
 function createScene() {
-    const Root = new pc.Entity("Root");
+    const root = new pc.Entity('Root');
 
-    const Camera = new pc.Entity("Camera");
-    Camera.setPosition(-1.792, 0.976, 1.127);
-    Camera.setEulerAngles(-24.6, -58, 0);
-    Camera.addComponent("camera", {
+    const cameraEntity = new pc.Entity('Camera');
+    cameraEntity.setPosition(-1.792, 0.976, 1.127);
+    cameraEntity.setEulerAngles(-24.6, -58, 0);
+    cameraEntity.addComponent('camera', {
         clearColor: new pc.Color(1, 1, 1),
         fov: 50
     });
-    Camera.addComponent("script");
-    Camera.script.create("orbitCamera");
-    Root.addChild(Camera);
+    cameraEntity.addComponent('script');
+    cameraEntity.script.create('orbitCamera');
+    root.addChild(cameraEntity);
 
-    const Main = new pc.Entity("Main");
-    Main.setPosition(-0.217, 0.204, 0.025);
-    Root.addChild(Main);
+    const mainEntity = new pc.Entity('Main');
+    mainEntity.setPosition(-0.217, 0.204, 0.025);
+    root.addChild(mainEntity);
 
-    const gsplatCurrent = new pc.Entity("GSPlatCurrent");
-    gsplatCurrent.setPosition(0.323, 0, 0.246);
-    gsplatCurrent.setEulerAngles(180, 0, 0);
-    gsplatCurrent.addComponent("gsplat", {
-        asset: assetMap.currentPly,
+    const gsplatEntity = new pc.Entity('GSPlatCurrent');
+    gsplatEntity.setPosition(0.323, 0, 0.246);
+    gsplatEntity.setEulerAngles(180, 0, 0);
+    gsplatEntity.addComponent('gsplat', {
+        asset: assets.lodMeta,
         unified: true
     });
 
-    gsplatCurrent.addComponent('script');
-    const reveal = gsplatCurrent.script.create(GsplatRevealRadial);
+    gsplatEntity.addComponent('script');
+    const reveal = gsplatEntity.script.create(GsplatRevealRadial);
+    reveal.enabled = false;
+
     reveal.center.set(0, 0, 0);
     reveal.speed = 10;
     reveal.acceleration = 20;
@@ -102,38 +110,55 @@ function createScene() {
     reveal.oscillationIntensity = 0.5;
     reveal.endRadius = 300;
 
-    Root.addChild(gsplatCurrent);
+    root.addChild(gsplatEntity);
 
-    const gs = gsplatCurrent.gsplat;
+    const gsplatComponent = gsplatEntity.gsplat;
 
     app.scene.gsplat.lodRangeMin = 1;
     app.scene.gsplat.lodRangeMax = 3;
-    gs.splatBudget = 500000;
-    gs.lodDistances = [10, 15, 20, 25];
 
-    gsplatCurrent.addComponent("script");
-    gsplatCurrent.script.create("stateSwitcher", {
+    gsplatComponent.splatBudget = 500000;
+    gsplatComponent.lodDistances = [10, 15, 20, 25];
+
+    gsplatEntity.addComponent('script');
+    gsplatEntity.script.create('stateSwitcher', {
         attributes: {
-            currentEntity: gsplatCurrent,
-            futureEntity: gsplatCurrent
+            currentEntity: gsplatEntity,
+            futureEntity: gsplatEntity
         }
     });
 
-    Root.addComponent("script");
-    Root.script.create("gallery", {
-        attributes: { galleryTextAsset: assetMap.galleryCsv }
-    });
-    Root.script.create("amenitiesMode");
-    Root.script.create("adjustPixelRatio");
+    root.addComponent('script');
+    root.script.create('gallery', { attributes: { galleryTextAsset: assets.galleryCsv } });
+    root.script.create('amenitiesMode');
+    root.script.create('adjustPixelRatio');
 
-    app.root.addChild(Root);
+    app.root.addChild(root);
 
-    return gs;
+    return { gsplatComponent, reveal };
 }
 
-function startApp() {
-    if (appStarted) return;
-    appStarted = true;
+function finalizeStart(reveal) {
+    setSplashProgress(1);
+    hideSplash();
+
+    const startScreen = document.getElementById('start-screen');
+    if (startScreen) startScreen.remove();
+
+    document.querySelector('.mode-panel')?.classList.remove('hidden');
+
+    if (reveal) {
+        if ('effectTime' in reveal) reveal.effectTime = 0;
+        reveal.enabled = true;
+    }
+
+    setupFullscreenButton();
+    loadLanguage();
+}
+
+async function startApp() {
+    if (hasStarted) return;
+    hasStarted = true;
 
     createSplash();
 
@@ -141,46 +166,42 @@ function startApp() {
         app,
         assetList,
         async () => {
-            const gs = createScene();
+            const { gsplatComponent, reveal } = createScene();
 
-            if (!isMobile() && !isTablet()) {
-                gs.lodDistances = [2, 4, 12, 16];
-                setTimeout(() => {
-                    gs.lodDistances = [20, 40, 60, 80];
-                    loadLODSmooth(app, gs, { duration: 5000 });
-                }, 7000);
-            }
-            setSplashProgress(1);
-            await delay(500);
-            hideSplash();
             app.start();
+
+            createDebugStatsOverlayUpdater(app, { gs: gsplatComponent });
 
             app.scene.gsplat.lodUpdateAngle = 90;
             app.scene.gsplat.lodBehindPenalty = 5;
             app.scene.gsplat.radialSorting = true;
             app.scene.gsplat.lodUpdateDistance = 2;
             app.scene.gsplat.lodUnderfillLimit = 5;
-            //app.scene.gsplat.colorizeLod = true;
 
-            const startScreen = document.getElementById("start-screen");
-            if (startScreen) {
-                startScreen.remove();
+            if (!isMobile() && !isTablet()) {
+                gsplatComponent.lodDistances = [2, 4, 12, 16];
+                setTimeout(() => {
+                    gsplatComponent.lodDistances = [20, 40, 60, 80];
+                    loadLODSmooth(app, gsplatComponent, { duration: 5000 });
+                }, 7000);
             }
 
-            document.querySelector('.mode-panel')?.classList.remove('hidden');
-            //document.querySelector('.state-panel')?.classList.remove('hidden');
+            waitForGsplatsGate(app, {
+                threshold: gsplatsOnScreenThreshold,
+                assetProgressWeight,
+                onProgress: (p) => setSplashProgress(p),
+                onReady: () => finalizeStart(reveal)
+            });
 
-            setupFullscreenButton();
-            loadLanguage();
+            await delay(0);
         },
-        setSplashProgress
+        (p) => setSplashProgress(mapAssetProgress(p, assetProgressWeight))
     );
 }
 
-startButton?.addEventListener("click", startApp);
-startButton?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        startApp();
-    }
+startButton?.addEventListener('click', startApp);
+startButton?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    startApp();
 });
