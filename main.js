@@ -72,7 +72,7 @@ const DEVICE_PROFILES = {
     tablet: {
         enableUpgrade: true,
         upgradeDelayMs: 7000,
-        upgradedLodDistances: [14, 20, 26, 32, 38],
+        upgradedLodDistances: [14, 18, 22, 26, 40],
         lodSmooth: { duration: 5000, endBudget: 1200000, endLodMin: 1 }
     },
     desktop: {
