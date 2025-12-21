@@ -12,7 +12,6 @@
     <body>
         <canvas id="application-canvas"></canvas>
         <script src="playcanvas.min.js"></script>
-        <script type="module" src="main.js"></script>
 
         <div id="start-screen">
             <div class="start-image"></div>
@@ -60,18 +59,39 @@
             <div class="gallery-thumbnails"></div>
         </div>
 
+        <div id="fps-locker" class="hidden">
+            <span class="setting-label">30 FPS</span>
+            <label class="switch">
+                <input type="checkbox" id="fps30" />
+                <span class="slider" aria-hidden="true"></span>
+            </label>
+        </div>
+
         <div id="fullscreen-button" role="button" tabindex="0" aria-label="Fullscreen"></div>
 
         <div id="debug-stats" class="hidden"></div>
 
+        <script type="module" src="main.js"></script>
+
         <script>
             const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            let lastW = 0;
+            let lastH = 0;
+
             function resizeCanvasForiOS() {
                 if (!isiOS) return;
                 const canvas = document.getElementById('application-canvas');
                 if (!canvas) return;
-                canvas.style.width = window.innerWidth + 'px';
-                canvas.style.height = window.innerHeight + 'px';
+
+                const w = window.innerWidth | 0;
+                const h = window.innerHeight | 0;
+
+                if (w === lastW && h === lastH) return;
+                lastW = w;
+                lastH = h;
+
+                canvas.style.width = w + 'px';
+                canvas.style.height = h + 'px';
             }
 
             window.addEventListener('resize', resizeCanvasForiOS);

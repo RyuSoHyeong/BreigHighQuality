@@ -1,4 +1,4 @@
-﻿assets/images/icons/ui_gym.png;Тренажерный зал;assets/images/pictures/pic_gym.jpg;Полностью оборудованный зал для занятий спортом и физической активности.;-1.977;0.5;0.074
+﻿assets/images/icons/ui_gym.png;Тренажерный зал;assets/images/pictures/pic_gym.jpg;Полностью оборудованный зал для занятий спортом и физической активности.;-9.177;1;-1.254
 assets/images/icons/ui_lounge.png;Зона отдыха у бассейна;assets/images/pictures/pic_longue.jpg;Бассейн с уютной лаунж-зоной, идеально подходящей для отдыха и встреч.;-5.677;1;-1.754
 assets/images/icons/ui_parking.png;Парковка;assets/images/pictures/pic_parking.jpg;Безопасная и удобная парковка с удобным въездом и выездом.;-1.677;1;-10.754
 assets/images/icons/ui_pool.png;Бассейн;assets/images/pictures/pic_longue.jpg;Спокойные бирюзовые воды, защищенные коралловым рифом, создают безопасную и уютную атмосферу.;4.323;1;-3.254
@@ -6,7 +6,7 @@ assets/images/icons/ui_playground.png;Детская площадка;assets/ima
 assets/images/icons/ui_gym.png;Уличные тренажёры;assets/images/pictures/pic_gym.jpg;Открытая зона фитнеса с оборудованием для тренировок на свежем воздухе.;-7.677;1;1.746
 assets/images/icons/ui_playground.png;Зона релаксации;assets/images/pictures/pic_longue.jpg;Уютное место на открытом воздухе, созданное для отдыха.;-6.677;1;5.246
 assets/images/icons/ui_playground.png;Площадка для волейбола;assets/images/pictures/pic_longue.jpg;Специальная площадка для игры в волейбол на свежем воздухе.;-1.177;1;5.246
-assets/images/icons/ui_walkway.png;Пешеходная зона;assets/images/pictures/pic_playground.jpg;Живописные дорожки для прогулок среди природы.;2.823;0.102;7.246
+assets/images/icons/ui_walkway.png;Пешеходная зона;assets/images/pictures/pic_playground.jpg;Живописные дорожки для прогулок среди природы.;2.823;1;7.246
 assets/images/icons/ui_playground.png;Каминная зона;assets/images/pictures/pic_longue.jpg;Место для встреч у камина, идеально для тёплых и уютных вечеров.;3.323;1;4.246
 assets/images/icons/ui_walkway.png;Амфитеатр;assets/images/pictures/pic_longue.jpg;Открытая площадка с сиденьями, идеально подходит для мероприятий и выступлений.;-2.177;1;-1.754
 assets/images/icons/ui_walkway.png;Пешеходная зона с лавочками;assets/images/pictures/pic_playground.jpg;Прогулочная дорожка с удобными скамейками для отдыха.;-0.177;1;-4.254

@@ -1,13 +1,13 @@
-﻿assets/images/icons/ui_gym.png;헬스장;assets/images/pictures/pic_gym.jpg;운동과 신체 활동을 위한 완비된 헬스 시설입니다.;-1.977;0.5;0.074
-assets/images/icons/ui_lounge.png;수영장 옆 라운지 구역;assets/images/pictures/pic_longue.jpg;편안한 휴식과 모임을 위한 아늑한 수영장 라운지 공간입니다.;-1.518;0.5;0.076
-assets/images/icons/ui_parking.png;주차장;assets/images/pictures/pic_parking.jpg;편리한 출입이 가능한 안전한 주차 공간입니다.;-0.921;0.5;-1.016
-assets/images/icons/ui_pool.png;수영장;assets/images/pictures/pic_longue.jpg;산호초로 보호되는 잔잔한 터쿼이즈 색상의 물로 안전하고 평화로운 환경을 제공합니다.;-0.325;0.5;-0.036
-assets/images/icons/ui_playground.png;어린이 놀이터;assets/images/pictures/pic_playground.jpg;다양한 놀이 기구가 있는 안전하고 즐거운 어린이 놀이터입니다.;0.01;0.5;0.866
-assets/images/icons/ui_gym.png;야외 운동 기구;assets/images/pictures/pic_gym.jpg;신체 운동을 위한 장비가 마련된 야외 피트니스 공간입니다.;-1.812;0.5;0.469
-assets/images/icons/ui_playground.png;휴식 공간;assets/images/pictures/pic_longue.jpg;휴식과 이완을 위한 아늑한 야외 공간입니다.;-1.731;0.5;0.801
-assets/images/icons/ui_playground.png;배구장;assets/images/pictures/pic_longue.jpg;신선한 공기 속에서 배구를 즐길 수 있는 전용 코트입니다.;-1.088;0.5;0.863
-assets/images/icons/ui_walkway.png;산책로;assets/images/pictures/pic_playground.jpg;자연 속에서 평화롭게 산책할 수 있는 경로입니다.;-0.653;0.5;1.122
-assets/images/icons/ui_playground.png;벽난로 공간;assets/images/pictures/pic_longue.jpg;따뜻하고 사교적인 저녁을 위한 벽난로가 있는 모임 장소입니다.;-0.483;0.5;0.771
-assets/images/icons/ui_walkway.png;야외 극장;assets/images/pictures/pic_longue.jpg;이벤트와 공연에 적합한 좌석이 마련된 야외 공연장입니다.;-1.085;0.5;-0.009
-assets/images/icons/ui_walkway.png;벤치가 있는 산책로;assets/images/pictures/pic_playground.jpg;길을 따라 편안하게 쉴 수 있는 벤치가 있는 산책로입니다.;-0.819;0.5;-0.31
-assets/images/icons/ui_reception.png;바와 로비;assets/images/pictures/pic_longue.jpg;편안한 휴식과 사교를 위한 스타일리시한 바와 로비 공간입니다.;-0.519;0.5;-0.66
+﻿assets/images/icons/ui_gym.png;헬스장;assets/images/pictures/pic_gym.jpg;운동과 신체 활동을 위한 완비된 헬스 시설입니다.;-9.177;1;-1.254
+assets/images/icons/ui_lounge.png;수영장 옆 라운지 구역;assets/images/pictures/pic_longue.jpg;편안한 휴식과 모임을 위한 아늑한 수영장 라운지 공간입니다.;-5.677;1;-1.754
+assets/images/icons/ui_parking.png;주차장;assets/images/pictures/pic_parking.jpg;편리한 출입이 가능한 안전한 주차 공간입니다.;-1.677;1;-10.754
+assets/images/icons/ui_pool.png;수영장;assets/images/pictures/pic_longue.jpg;산호초로 보호되는 잔잔한 터쿼이즈 색상의 물로 안전하고 평화로운 환경을 제공합니다.;4.323;1;-3.254
+assets/images/icons/ui_playground.png;어린이 놀이터;assets/images/pictures/pic_playground.jpg;다양한 놀이 기구가 있는 안전하고 즐거운 어린이 놀이터입니다.;8.323;1;4.846
+assets/images/icons/ui_gym.png;야외 운동 기구;assets/images/pictures/pic_gym.jpg;신체 운동을 위한 장비가 마련된 야외 피트니스 공간입니다.;-7.677;1;1.746
+assets/images/icons/ui_playground.png;휴식 공간;assets/images/pictures/pic_longue.jpg;휴식과 이완을 위한 아늑한 야외 공간입니다.;-6.677;1;5.246
+assets/images/icons/ui_playground.png;배구장;assets/images/pictures/pic_longue.jpg;신선한 공기 속에서 배구를 즐길 수 있는 전용 코트입니다.;-1.177;1;5.246
+assets/images/icons/ui_walkway.png;산책로;assets/images/pictures/pic_playground.jpg;자연 속에서 평화롭게 산책할 수 있는 경로입니다.;2.823;1;7.246
+assets/images/icons/ui_playground.png;벽난로 공간;assets/images/pictures/pic_longue.jpg;따뜻하고 사교적인 저녁을 위한 벽난로가 있는 모임 장소입니다.;3.323;1;4.246
+assets/images/icons/ui_walkway.png;야외 극장;assets/images/pictures/pic_longue.jpg;이벤트와 공연에 적합한 좌석이 마련된 야외 공연장입니다.;-2.177;1;-1.754
+assets/images/icons/ui_walkway.png;벤치가 있는 산책로;assets/images/pictures/pic_playground.jpg;길을 따라 편안하게 쉴 수 있는 벤치가 있는 산책로입니다.;-0.177;1;-4.254
+assets/images/icons/ui_reception.png;바와 로비;assets/images/pictures/pic_longue.jpg;편안한 휴식과 사교를 위한 스타일리시한 바와 로비 공간입니다.;2.023;1;-8.254

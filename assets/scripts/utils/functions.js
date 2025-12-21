@@ -133,12 +133,14 @@ export function waitForGsplatsGate(app, options) {
     };
 
     app.on('update', update);
+    app.once('destroy', () => app.off('update', update));
 }
 
 export function createDebugStatsOverlayUpdater(app, options) {
     const {
         elementId = 'debug-stats',
-        gs
+        gs,
+        fpsLockerState
     } = options;
 
     const el = document.getElementById(elementId);
@@ -146,18 +148,19 @@ export function createDebugStatsOverlayUpdater(app, options) {
 
     app.stats.enabled = true;
 
-    let frames = 0;
     let lastTime = performance.now();
-    let fps = 0;
+    let lastRenderCount = fpsLockerState?.renderFrameCounter || 0;
 
     const update = () => {
-        frames++;
         const now = performance.now();
-
         if (now - lastTime < 1000) return;
 
-        fps = Math.round((frames * 1000) / (now - lastTime));
-        frames = 0;
+        const renderCount = fpsLockerState?.renderFrameCounter || 0;
+        const renderedFrames = renderCount - lastRenderCount;
+
+        const fps = Math.round((renderedFrames * 1000) / (now - lastTime));
+
+        lastRenderCount = renderCount;
         lastTime = now;
 
         const gsplats = app.stats?.frame?.gsplats;
@@ -199,6 +202,7 @@ export function finalizeStart({ reveal, setSplashProgress, hideSplash, setupFull
     if (startScreen) startScreen.remove();
 
     document.querySelector('.mode-panel')?.classList.remove('hidden');
+    document.getElementById('fps-locker')?.classList.remove('hidden');
     document.getElementById('debug-stats')?.classList.remove('hidden');
 
     if (reveal) {

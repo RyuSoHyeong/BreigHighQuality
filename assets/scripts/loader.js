@@ -106,12 +106,18 @@ function createUrlResolver(assetList) {
 }
 
 function patchNetworkProgress(resolveInfo, onBytes) {
+    if (XMLHttpRequest.prototype._pcProgressPatched) {
+        return function restore() {};
+    }
+
     const originalOpen = XMLHttpRequest.prototype.open;
     const originalSend = XMLHttpRequest.prototype.send;
     const originalFetch =
         typeof window !== "undefined" && window.fetch
             ? window.fetch.bind(window)
             : null;
+
+    XMLHttpRequest.prototype._pcProgressPatched = true;
 
     XMLHttpRequest.prototype.open = function (method, url, async, user, password) {
         this._pcUrl = url;
@@ -183,7 +189,10 @@ function patchNetworkProgress(resolveInfo, onBytes) {
                                     controller.enqueue(value);
                                     read();
                                 })
-                                .catch((err) => controller.error(err));
+                                .catch(() => {
+                                    onBytes(info, size);
+                                    controller.close();
+                                });
                         }
 
                         read();
@@ -208,6 +217,7 @@ function patchNetworkProgress(resolveInfo, onBytes) {
         if (originalFetch) {
             window.fetch = originalFetch;
         }
+        XMLHttpRequest.prototype._pcProgressPatched = false;
     };
 }
 
@@ -228,17 +238,31 @@ export function loadAssets(app, assetList, onComplete, onProgress) {
         i.loadedBytes = 0;
     });
 
-    function recalcProgress() {
-        let loaded = 0;
-        for (const info of assetList) {
-            loaded += info.loadedBytes || 0;
-        }
+    let rafId = 0;
+    let pending = false;
 
-        let p = totalSize > 0 ? loaded / totalSize : 1;
-        if (!isFinite(p) || isNaN(p)) p = 0;
-        p = Math.max(0, Math.min(1, p));
-
+    function emitProgress(p) {
         if (onProgress) onProgress(p);
+    }
+
+    function recalcProgress() {
+        if (pending) return;
+        pending = true;
+
+        rafId = requestAnimationFrame(() => {
+            pending = false;
+
+            let loaded = 0;
+            for (const info of assetList) {
+                loaded += info.loadedBytes || 0;
+            }
+
+            let p = totalSize > 0 ? loaded / totalSize : 1;
+            if (!isFinite(p) || isNaN(p)) p = 0;
+            p = Math.max(0, Math.min(1, p));
+
+            emitProgress(p);
+        });
     }
 
     function onBytes(info, absLoaded) {
@@ -266,6 +290,12 @@ export function loadAssets(app, assetList, onComplete, onProgress) {
             }
         }
 
+        if (rafId) {
+            cancelAnimationFrame(rafId);
+            rafId = 0;
+            pending = false;
+        }
+        
         recalcProgress();
         if (onComplete) onComplete(err || null);
     });

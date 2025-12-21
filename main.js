@@ -1,9 +1,11 @@
 import { createSplash, setSplashProgress, hideSplash, loadAssets } from './assets/scripts/loader.js';
 import { setupFullscreenButton } from './assets/scripts/utils/fullscreen.js';
 import { loadLanguage } from './assets/scripts/utils/language.js';
-import { GsplatRevealRadial } from './assets/scripts/utils/reveal-radial.mjs';
+import { GsplatRevealRadial } from './assets/shaders/reveal-radial.mjs';
 import { isMobile, isTablet } from './assets/scripts/utils/detect.js';
-import { delay, loadLODSmooth, mapAssetProgress, waitForGsplatsGate, createDebugStatsOverlayUpdater, getDeviceProfile, finalizeStart, createSmoothProgress } from './assets/scripts/utils/functions.js';
+import { delay, loadLODSmooth, mapAssetProgress, waitForGsplatsGate, createDebugStatsOverlayUpdater, getDeviceProfile, finalizeStart, createSmoothProgress} from './assets/scripts/utils/functions.js';
+import { createFpsLocker } from './assets/scripts/utils/fpslocker.js';
+import { createDestroyRegistry } from './assets/scripts/utils/onAppDestroy.js';
 
 const canvas = document.getElementById('application-canvas');
 
@@ -20,15 +22,34 @@ const app = new pc.Application(canvas, {
     }
 });
 
+const { onAppDestroy } = createDestroyRegistry(app);
 app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
 app.setCanvasResolution(pc.RESOLUTION_AUTO);
-window.addEventListener('resize', () => app.resizeCanvas());
+
+let resizeRaf = 0;
+const onResize = () => {
+    if (resizeRaf) return;
+    resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = 0;
+        app.resizeCanvas();
+    });
+};
+window.addEventListener('resize', onResize);
+
+onAppDestroy(() => {
+    window.removeEventListener('resize', onResize);
+    if (resizeRaf) cancelAnimationFrame(resizeRaf);
+    resizeRaf = 0;
+});
+
+const fpsLocker = createFpsLocker(app, { toggleElementId: 'fps30', cappedFps: 30 });
+onAppDestroy(() => fpsLocker?.destroy?.());
 
 const startButton = document.getElementById('start-button');
 
 const assets = {
     galleryCsv: new pc.Asset('gallery.csv', 'text', { url: 'assets/data/dataGallery.csv' }),
-    lodMeta: new pc.Asset('lod-meta.json', 'gsplat', { url: 'assets/gsplats/lod-meta.json' })
+    SplatCurrent: new pc.Asset('lod-meta.json', 'gsplat', { url: 'assets/gsplats/lod-meta.json' })
 };
 
 const scriptAssets = [
@@ -44,7 +65,7 @@ scriptAssets.forEach((a) => app.assets.add(a));
 
 const assetList = [
     { asset: assets.galleryCsv, size: 1024 },
-    { asset: assets.lodMeta, size: 598 * 1024 },
+    { asset: assets.SplatCurrent, size: 670 * 1024 },
     { asset: scriptAssets[0], size: 1024 },
     { asset: scriptAssets[1], size: 3 * 1024 },
     { asset: scriptAssets[2], size: 3 * 1024 },
@@ -105,7 +126,7 @@ function createScene() {
     gsplatEntity.setPosition(0.323, 0, 0.246);
     gsplatEntity.setEulerAngles(180, 0, 0);
     gsplatEntity.addComponent('gsplat', {
-        asset: assets.lodMeta,
+        asset: assets.SplatCurrent,
         unified: true
     });
 
@@ -136,7 +157,6 @@ function createScene() {
 
     app.scene.gsplat.lodRangeMax = 4;
 
-    gsplatEntity.addComponent('script');
     gsplatEntity.script.create('stateSwitcher', {
         attributes: {
             currentEntity: gsplatEntity,
@@ -146,7 +166,7 @@ function createScene() {
 
     root.addComponent('script');
     root.script.create('gallery', { attributes: { galleryTextAsset: assets.galleryCsv } });
-    root.script.create('amenitiesMode');
+    root.script.create('amenitiesMode', { attributes: { fpsLockerState: fpsLocker.state } });
     root.script.create('adjustPixelRatio');
 
     app.root.addChild(root);
@@ -162,6 +182,14 @@ async function startApp() {
 
     const smoothProgress = createSmoothProgress(setSplashProgress, { speed: 10 });
 
+    let upgradeTimerId = 0;
+    onAppDestroy(() => {
+        if (upgradeTimerId) {
+            clearTimeout(upgradeTimerId);
+            upgradeTimerId = 0;
+        }
+    });
+
     loadAssets(
         app,
         assetList,
@@ -175,7 +203,11 @@ async function startApp() {
 
             app.start();
 
-            createDebugStatsOverlayUpdater(app, { gs: gsplatComponent });
+            const stopDebugOverlay = createDebugStatsOverlayUpdater(app, {
+                gs: gsplatComponent,
+                fpsLockerState: fpsLocker.state
+            });
+            onAppDestroy(() => stopDebugOverlay?.());
 
             app.scene.gsplat.lodUpdateAngle = 90;
             app.scene.gsplat.lodBehindPenalty = 5;
@@ -185,7 +217,7 @@ async function startApp() {
             //app.scene.gsplat.colorizeLod = true;
 
             if (profile.enableUpgrade) {
-                setTimeout(() => {
+                upgradeTimerId = window.setTimeout(() => {
                     gsplatComponent.lodDistances = profile.upgradedLodDistances;
 
                     loadLODSmooth(app, gsplatComponent, {
@@ -207,19 +239,21 @@ async function startApp() {
 
                     await delay(200);
 
-                    finalizeStart({ reveal, setSplashProgress, hideSplash, setupFullscreenButton, loadLanguage});
+                    finalizeStart({ reveal, setSplashProgress, hideSplash, setupFullscreenButton, loadLanguage });
                 }
             });
-
-            await delay(0);
         },
         (p) => smoothProgress.setTarget(mapAssetProgress(p, assetProgressWeight))
     );
 }
 
-startButton?.addEventListener('click', startApp);
-startButton?.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    e.preventDefault();
+const onStartClick = (e) => {
+    e?.preventDefault?.();
     startApp();
+};
+
+if (startButton) startButton.addEventListener('click', onStartClick);
+
+onAppDestroy(() => {
+    if (startButton) startButton.removeEventListener('click', onStartClick);
 });

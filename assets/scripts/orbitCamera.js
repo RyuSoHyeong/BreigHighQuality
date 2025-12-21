@@ -24,6 +24,7 @@ OrbitCamera.attributes.add('maxPitch', { type: 'number', default: 60});
 
 OrbitCamera.attributes.add('autoRotateSpeed', { type: 'number', default: 7 });
 OrbitCamera.attributes.add('autoRotateDelay', { type: 'number', default: 3 });
+OrbitCamera.attributes.add('autoRotateMode', { type: 'number', default: 0 });
 
 OrbitCamera.attributes.add('mouseRotationSensitivity', { type: 'number', default: 0.2});
 OrbitCamera.attributes.add('touchRotationSensitivity', { type: 'number', default: 0.6});
@@ -36,7 +37,8 @@ OrbitCamera.prototype.initialize = function () {
     this.initTouchHandlers();
 
     this.adjustDistanceForOrientation();
-    window.addEventListener('resize', this.adjustDistanceForOrientation.bind(this));
+    this._onResize = this.adjustDistanceForOrientation.bind(this);
+    window.addEventListener('resize', this._onResize);
 };
 
 OrbitCamera.prototype.initState = function () {
@@ -51,6 +53,7 @@ OrbitCamera.prototype.initState = function () {
 
     this.lastInputTime = performance.now();
 
+    this.autoRotateEnabled = true;
     this.isDragging = false;
     this.lastTouchDistance = null;
     this.lastTouchPos = new pc.Vec2();
@@ -198,8 +201,9 @@ OrbitCamera.prototype.onTouchEnd = function (e) {
 OrbitCamera.prototype.update = function (dt) {
     const now = performance.now();
     const idleTime = (now - this.lastInputTime) / 1000;
+    const allowAutoRotate = this.autoRotateEnabled && this.autoRotateMode === 0;
 
-    if (idleTime > this.autoRotateDelay) {
+    if (allowAutoRotate && idleTime > this.autoRotateDelay) {
         this.eulersTarget.y -= this.autoRotateSpeed * dt;
     }
 
@@ -208,6 +212,11 @@ OrbitCamera.prototype.update = function (dt) {
 
     this.updateRotationAndZoom();
     this.updatePosition();
+};
+
+OrbitCamera.prototype.setAutoRotateEnabled = function (enabled) {
+    this.autoRotateEnabled = !!enabled;
+    this.lastInputTime = performance.now();
 };
 
 OrbitCamera.prototype.updateRotationAndZoom = function () {
@@ -302,5 +311,25 @@ OrbitCamera.prototype.setAmenitiesDistanceByOrientation = function () {
     } else {
         this.setDistanceLimits(this.amenitiesLandscapeMinDistance, this.amenitiesLandscapeMaxDistance);
         this.distanceTarget = this.amenitiesLandscapeDistance;
+    }
+};
+
+OrbitCamera.prototype.onDestroy = function () {
+    if (this._onResize) {
+        window.removeEventListener('resize', this._onResize);
+        this._onResize = null;
+    }
+
+    if (this.app && this.app.mouse) {
+        this.app.mouse.off(pc.EVENT_MOUSEDOWN, this.onMouseDown, this);
+        this.app.mouse.off(pc.EVENT_MOUSEUP, this.onMouseUp, this);
+        this.app.mouse.off(pc.EVENT_MOUSEMOVE, this.onMouseMove, this);
+        this.app.mouse.off(pc.EVENT_MOUSEWHEEL, this.onMouseWheel, this);
+    }
+
+    if (this.app && this.app.touch) {
+        this.app.touch.off(pc.EVENT_TOUCHSTART, this.onTouchStart, this);
+        this.app.touch.off(pc.EVENT_TOUCHMOVE, this.onTouchMove, this);
+        this.app.touch.off(pc.EVENT_TOUCHEND, this.onTouchEnd, this);
     }
 };

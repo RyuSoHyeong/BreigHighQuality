@@ -1,13 +1,13 @@
-﻿assets/images/icons/ui_gym.png;Gimnasio;assets/images/pictures/pic_gym.jpg;Gimnasio totalmente equipado para entrenamiento y actividades físicas.;-1.977;0.5;0.074
-assets/images/icons/ui_lounge.png;Zona lounge junto a la piscina;assets/images/pictures/pic_longue.jpg;Piscina con una zona lounge acogedora, ideal para relajarse y reunirse.;-1.518;0.5;0.076
-assets/images/icons/ui_parking.png;Estacionamiento;assets/images/pictures/pic_parking.jpg;Estacionamiento seguro y accesible con entrada y salida convenientes.;-0.921;0.5;-1.016
-assets/images/icons/ui_pool.png;Piscina;assets/images/pictures/pic_longue.jpg;Aguas tranquilas color turquesa protegidas por un arrecife de coral, perfectas para nadar y relajarse.;-0.325;0.5;-0.036
-assets/images/icons/ui_playground.png;Área de juegos infantiles;assets/images/pictures/pic_playground.jpg;Área de juegos segura y divertida con diversos equipos para niños.;0.01;0.5;0.866
-assets/images/icons/ui_gym.png;Equipamiento de ejercicio al aire libre;assets/images/pictures/pic_gym.jpg;Área de fitness al aire libre con máquinas para entrenamientos físicos.;-1.812;0.5;0.469
-assets/images/icons/ui_playground.png;Zona de relajación;assets/images/pictures/pic_longue.jpg;Espacio exterior acogedor diseñado para el descanso.;-1.731;0.5;0.801
-assets/images/icons/ui_playground.png;Cancha de voleibol;assets/images/pictures/pic_longue.jpg;Cancha dedicada para jugar voleibol al aire libre.;-1.088;0.5;0.863
-assets/images/icons/ui_walkway.png;Área de caminata;assets/images/pictures/pic_playground.jpg;Senderos escénicos para paseos tranquilos rodeados de naturaleza.;-0.653;0.5;1.122
-assets/images/icons/ui_playground.png;Zona de chimenea;assets/images/pictures/pic_longue.jpg;Espacio para reuniones con chimenea, ideal para noches cálidas y sociales.;-0.483;0.5;0.771
-assets/images/icons/ui_walkway.png;Anfiteatro;assets/images/pictures/pic_longue.jpg;Espacio al aire libre con asientos, ideal para eventos y espectáculos.;-1.085;0.5;-0.009
-assets/images/icons/ui_walkway.png;Sendero con bancos para descansar;assets/images/pictures/pic_playground.jpg;Camino peatonal con bancos cómodos para descansar en el recorrido.;-0.819;0.5;-0.31
-assets/images/icons/ui_reception.png;Bar y vestíbulo;assets/images/pictures/pic_longue.jpg;Espacio acogedor que combina un bar elegante y un vestíbulo cómodo para relajarse y socializar.;-0.519;0.5;-0.66
+﻿assets/images/icons/ui_gym.png;Gimnasio;assets/images/pictures/pic_gym.jpg;Gimnasio totalmente equipado para entrenamiento y actividades físicas.;-9.177;1;-1.254
+assets/images/icons/ui_lounge.png;Zona lounge junto a la piscina;assets/images/pictures/pic_longue.jpg;Piscina con una zona lounge acogedora, ideal para relajarse y reunirse.;-5.677;1;-1.754
+assets/images/icons/ui_parking.png;Estacionamiento;assets/images/pictures/pic_parking.jpg;Estacionamiento seguro y accesible con entrada y salida convenientes.;-1.677;1;-10.754
+assets/images/icons/ui_pool.png;Piscina;assets/images/pictures/pic_longue.jpg;Aguas tranquilas color turquesa protegidas por un arrecife de coral, perfectas para nadar y relajarse.;4.323;1;-3.254
+assets/images/icons/ui_playground.png;Área de juegos infantiles;assets/images/pictures/pic_playground.jpg;Área de juegos segura y divertida con diversos equipos para niños.;8.323;1;4.846
+assets/images/icons/ui_gym.png;Equipamiento de ejercicio al aire libre;assets/images/pictures/pic_gym.jpg;Área de fitness al aire libre con máquinas para entrenamientos físicos.;-7.677;1;1.746
+assets/images/icons/ui_playground.png;Zona de relajación;assets/images/pictures/pic_longue.jpg;Espacio exterior acogedor diseñado para el descanso.;-6.677;1;5.246
+assets/images/icons/ui_playground.png;Cancha de voleibol;assets/images/pictures/pic_longue.jpg;Cancha dedicada para jugar voleibol al aire libre.;-1.177;1;5.246
+assets/images/icons/ui_walkway.png;Área de caminata;assets/images/pictures/pic_playground.jpg;Senderos escénicos para paseos tranquilos rodeados de naturaleza.;2.823;1;7.246
+assets/images/icons/ui_playground.png;Zona de chimenea;assets/images/pictures/pic_longue.jpg;Espacio para reuniones con chimenea, ideal para noches cálidas y sociales.;3.323;1;4.246
+assets/images/icons/ui_walkway.png;Anfiteatro;assets/images/pictures/pic_longue.jpg;Espacio al aire libre con asientos, ideal para eventos y espectáculos.;-2.177;1;-1.754
+assets/images/icons/ui_walkway.png;Sendero con bancos para descansar;assets/images/pictures/pic_playground.jpg;Camino peatonal con bancos cómodos para descansar en el recorrido.;-0.177;1;-4.254
+assets/images/icons/ui_reception.png;Bar y vestíbulo;assets/images/pictures/pic_longue.jpg;Espacio acogedor que combina un bar elegante y un vestíbulo cómodo para relajarse y socializar.;2.023;1;-8.254

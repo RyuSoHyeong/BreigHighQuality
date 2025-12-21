@@ -10,5 +10,5 @@ AdjustPixelRatio.prototype.initialize = function () {
     const scale = isMobile ? this.scaleMobile : this.scalePC;
 
     app.graphicsDevice.maxPixelRatio = nativeRatio * scale;
-    app.graphicsDevice.resizeCanvas(app.graphicsDevice.canvas.width, app.graphicsDevice.canvas.height);
+    app.resizeCanvas();
 };

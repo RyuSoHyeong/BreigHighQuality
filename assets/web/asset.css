@@ -15,7 +15,7 @@ body {
     touch-action: none;
 }
 
-button, .button, #start-button, #fullscreen-button, .amenities, .thumbnail {
+button, .button, #start-button, #fullscreen-button, .amenities, .thumbnail, .switch {
     -webkit-tap-highlight-color: transparent !important;
     -webkit-user-select: none !important;
     -moz-user-select: none !important;
@@ -35,14 +35,85 @@ canvas {
   display: none !important;
 }
 
+#fps-locker{
+    position: fixed;
+    left: 50%;
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+}
+
+.setting-label{
+    font-size:14px;
+    user-select:none;
+    color: white;
+}
+
+.switch{
+    position:relative;
+    width:52px;
+    height:32px;
+    display:inline-block;
+    flex:0 0 auto;
+}
+
+.switch input{
+    opacity:0;
+    width:0;
+    height:0;
+    position:absolute;
+}
+
+.slider{
+    position:absolute;
+    inset:0;
+    cursor:pointer;
+    border-radius:999px;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.22);
+    transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+}
+
+.slider::before{
+    content:"";
+    position:absolute;
+    width:24px;
+    height:26px;
+    left:2px;
+    top:2px;
+    border-radius:999px;
+    background: rgba(255,255,255,0.92);
+    transition: transform 180ms ease;
+}
+
+.switch input:checked + .slider{
+    background: rgb(66, 208, 96);
+    border-color: rgba(255,255,255,0.25);
+}
+
+.switch input:checked + .slider::before{
+    transform: translateX(22px);
+}
+
+@media (pointer: coarse){
+    .switch{ width:56px; height:32px; }
+    .slider::before{ width:26px; height:27px; }
+    .switch input:checked + .slider::before{ transform: translateX(24px); }
+}
+
 #debug-stats {
     position: fixed;
     left: 10px;
-    bottom: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
     z-index: 9999;
-    padding: 8px 10px;
+    padding: 4px 6px;
     background: rgba(0,0,0,0.55);
-    color: #00ffcc;
+    color: rgb(255, 255, 255);
     font-size: 8px;
     line-height: 1.4;
     pointer-events: none;
@@ -142,7 +213,7 @@ canvas {
 
 #fullscreen-button {
     position: absolute;
-    bottom: 30px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
     right: 20px;
     width: 32px;
     height: 32px;
@@ -150,7 +221,7 @@ canvas {
     background-repeat: no-repeat;
     background-position: center;
     cursor: pointer;
-    z-index: 10;
+    z-index: 5;
 }
 
 .glass-panel {
@@ -251,16 +322,40 @@ canvas {
     z-index: 1;
 }
 
+#amenities-container {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+}
+
 .amenities {
     position: absolute;
     height: 36px;   
-    overflow: hidden;
+    overflow: visible;
     display: flex;
     width: max-content;
+    pointer-events: auto;
     justify-content: center;
     align-items: center;
     z-index: 0;
-    transition: transform 0.2s ease;
+    will-change: transform;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .amenities .panel-container {
+        transition: transform 0.2s ease;
+        transform-origin: center;
+    }
+
+    .amenities .glass-panel {
+        transition: transform 0.2s ease;
+        transform-origin: center;
+    }
+
+    .amenities:hover .panel-container,
+    .amenities:hover .glass-panel {
+        transform: scale(1.1);
+    }
 }
 
 .amenities .panel-container {
@@ -304,10 +399,6 @@ canvas {
     align-items: center;
     -webkit-user-select: none;
     user-select: none;
-}
-
-.amenities:hover {
-    transform: scale(1.1);
 }
 
 .amenities .glass-panel,
@@ -571,12 +662,16 @@ canvas {
         padding-right: 4px;
     }
 
-    .amenities:hover {
-        transform: none;
+    #debug-stats {
+        bottom: calc(5px + env(safe-area-inset-bottom));
+    }
+
+    #fps-locker{
+        bottom: calc(5px + env(safe-area-inset-bottom));
     }
 
     #fullscreen-button {
-        bottom: 14px;
+        bottom: calc(5px + env(safe-area-inset-bottom));
         right: 18px;
     }
 
@@ -676,8 +771,16 @@ canvas {
         transition: none;
     }
 
+    #debug-stats {
+        bottom: calc(5px + env(safe-area-inset-bottom));
+    }
+
+    #fps-locker{
+        bottom: calc(5px + env(safe-area-inset-bottom));
+    }
+
     #fullscreen-button {
-        bottom: 14px;
+        bottom: calc(5px + env(safe-area-inset-bottom));
         right: 18px;
     }
 
@@ -699,8 +802,7 @@ canvas {
     }
 
     .amenities {
-        height: 18px;   
-        transition: none;
+        height: 18px;
     }
 
     .amenities .glass-panel {
@@ -722,10 +824,6 @@ canvas {
     .amenities-text {
         font-size: 9px;
         padding-right: 4px;
-    }
-
-    .amenities:hover {
-        transform: none;
     }
 
     #info-panel {
