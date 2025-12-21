@@ -211,9 +211,10 @@ AmenitiesMode.prototype.updateDomPositions = function () {
     const camera = this.cameraEntity;
     if (!camera || !camera.camera) return;
 
-    const canvas = this.app.graphicsDevice.canvas;
     const rect = this.getCanvasRect();
     const screenPos = this._screenPos;
+
+    const threshold = 0.25;
 
     for (let i = 0; i < this.amenitiesData.length; i++) {
         const data = this.amenitiesData[i];
@@ -232,8 +233,8 @@ AmenitiesMode.prototype.updateDomPositions = function () {
             continue;
         }
 
-        const x = Math.round(rect.left + screenPos.x);
-        const y = Math.round(rect.top + screenPos.y);
+        const x = rect.left + screenPos.x;
+        const y = rect.top + screenPos.y;
 
         if (!data.visible) {
             data.visible = true;
@@ -242,7 +243,10 @@ AmenitiesMode.prototype.updateDomPositions = function () {
             data.lastY = null;
         }
 
-        if (x !== data.lastX || y !== data.lastY) {
+        const dx = data.lastX === null ? Infinity : Math.abs(x - data.lastX);
+        const dy = data.lastY === null ? Infinity : Math.abs(y - data.lastY);
+
+        if (dx > threshold || dy > threshold) {
             dom.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
             data.lastX = x;
             data.lastY = y;
