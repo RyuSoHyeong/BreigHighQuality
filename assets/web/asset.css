@@ -613,13 +613,11 @@ button,
     .state-panel { height: 42px; bottom: 10px; padding: 0; }
     .state-panel .panel-container { gap: 8px; padding: 0 6px; }
 
-    .amenities { height: 18px; transition: none; }
+    .amenities { height: 20px; transition: none; }
     .amenities .panel-container { gap: 4px; padding: 0 4px 0 0; }
-    .amenities-icon { width: 18px; height: 18px; }
+    .amenities-icon { width: 20px; height: 20px; }
     .amenities-text { font-size: 9px; padding-right: 4px; }
-    .amenities-line {
-        padding: 1px;
-    }
+    .amenities-line { padding: 1px; }
 
     #fullscreen-button { right: 18px; }
 
@@ -661,9 +659,7 @@ button,
     .amenities .panel-container { gap: 4px; padding: 0 4px 0 0; }
     .amenities-icon { width: 22px; height: 22px; }
     .amenities-text { font-size: 10px; padding-right: 4px; }
-    .amenities-line {
-        padding: 1px;
-    }
+    .amenities-line { padding: 1px; }
 
     #info-panel { top: 60px; right: 10px; width: 175px; height: 205px; }
     #info-panel .border-shadow { border-radius: 6px; }

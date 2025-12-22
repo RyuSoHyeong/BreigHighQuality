@@ -14,7 +14,7 @@ AdjustPixelRatio.attributes.add('maxScalePC', { type: 'number', default: 1 });
 AdjustPixelRatio.attributes.add('step', { type: 'number', default: 0.05 });
 AdjustPixelRatio.attributes.add('sampleMs', { type: 'number', default: 1000 });
 
-AdjustPixelRatio.attributes.add('downFps', { type: 'number', default: 26 });
+AdjustPixelRatio.attributes.add('downFps', { type: 'number', default: 30 });
 AdjustPixelRatio.attributes.add('upFps', { type: 'number', default: 45 });
 
 AdjustPixelRatio.prototype.initialize = function () {
