@@ -618,6 +618,7 @@ button,
     .amenities-icon { width: 20px; height: 20px; }
     .amenities-text { font-size: 9px; padding-right: 4px; }
     .amenities-line { padding: 1px; }
+    .mode-panel .amenities-line { padding: 1.7px; }
 
     #fullscreen-button { right: 18px; }
 
@@ -660,6 +661,7 @@ button,
     .amenities-icon { width: 22px; height: 22px; }
     .amenities-text { font-size: 10px; padding-right: 4px; }
     .amenities-line { padding: 1px; }
+    .mode-panel .amenities-line { padding: 1.7px; }
 
     #info-panel { top: 60px; right: 10px; width: 175px; height: 205px; }
     #info-panel .border-shadow { border-radius: 6px; }
