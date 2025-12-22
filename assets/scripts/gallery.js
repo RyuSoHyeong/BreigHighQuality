@@ -1,168 +1,178 @@
 var Gallery = pc.createScript('gallery');
 
-Gallery.attributes.add('galleryTextAsset', { type: 'asset', assetType: 'binary', title: 'Gallery Image List (.txt or .csv)'});
+Gallery.attributes.add('galleryTextAsset', { type: 'asset', assetType: 'text'});
 
 Gallery.prototype.initialize = function () {
     this._rafId = 0;
-    this._onKeyDown = null;
-    this._closeHandlers = null;
-    this._arrowHandlers = null;
 
-    this.waitForGalleryDOM();
+    this._galleryButton = null;
+    this._galleryPanel = null;
+
+    this._initialized = false;
+    this._currentIndex = 0;
+
+    this._mainImage = null;
+    this._thumbnails = null;
+    this._arrowLeft = null;
+    this._arrowRight = null;
+
+    this._onOpen = null;
+    this._onKeyDown = null;
+    this._onThumbClick = null;
+    this._onLeft = null;
+    this._onRight = null;
+    this._onClose = null;
+
+    this._waitForDom = this.waitForGalleryDOM.bind(this);
+    this._rafId = requestAnimationFrame(this._waitForDom);
 };
 
 Gallery.prototype.waitForGalleryDOM = function () {
-    const galleryButton = document.querySelector('[data-mode="Gallery"]');
-    const galleryPanel = document.querySelector('.gallery-panel');
+    const btn = document.querySelector('[data-mode="Gallery"]');
+    const panel = document.querySelector('.gallery-panel');
 
-    if (galleryButton && galleryPanel) {
-        this.setupGallery(galleryButton, galleryPanel);
-    } else {
-        this._rafId = requestAnimationFrame(this.waitForGalleryDOM.bind(this));
+    if (btn && panel) {
+        this.setupGallery(btn, panel);
+        return;
     }
+
+    this._rafId = requestAnimationFrame(this._waitForDom);
+};
+
+Gallery.prototype.getLines = function () {
+    const raw = this.app.assets.get(this.galleryTextAsset.id)?.resource || '';
+    return raw
+        .trim()
+        .split('\n')
+        .map(s => s.trim())
+        .filter(Boolean);
+};
+
+Gallery.prototype.setHidden = function (hidden) {
+    this._galleryPanel?.classList.toggle('hidden', !!hidden);
+};
+
+Gallery.prototype.updateActiveThumb = function () {
+    if (!this._thumbnails) return;
+    const thumbs = this._thumbnails.querySelectorAll('.thumbnail');
+    thumbs.forEach((t, i) => t.className = i === this._currentIndex ? 'thumbnail active' : 'thumbnail');
+};
+
+Gallery.prototype.setIndex = function (lines, idx) {
+    if (!lines.length) return;
+
+    if (idx < 0) idx = lines.length - 1;
+    if (idx >= lines.length) idx = 0;
+
+    this._currentIndex = idx;
+
+    if (this._mainImage) this._mainImage.src = lines[this._currentIndex];
+    this.updateActiveThumb();
 };
 
 Gallery.prototype.setupGallery = function (galleryButton, galleryPanel) {
     this._galleryButton = galleryButton;
     this._galleryPanel = galleryPanel;
 
-    let galleryInitialized = false;
-
     this._onOpen = () => {
-        galleryPanel.classList.remove('hidden');
+        this.setHidden(false);
+        if (this._initialized) return;
 
-        if (galleryInitialized) return;
-        galleryInitialized = true;
-
-        const mainImage = galleryPanel.querySelector('.gallery-main-image');
-        const thumbnailsContainer = galleryPanel.querySelector('.gallery-thumbnails');
-        const arrowLeft = galleryPanel.querySelector('.gallery-left');
-        const arrowRight = galleryPanel.querySelector('.gallery-right');
-
-        const raw = this.app.assets.get(this.galleryTextAsset.id)?.resource;
-        const lines = raw.trim().split('\n').map(s => s.trim()).filter(Boolean);
-
+        const lines = this.getLines();
         if (!lines.length) {
             console.warn('[Gallery] No URLs found in galleryTextAsset');
             return;
         }
 
-        let currentIndex = 0;
+        this._initialized = true;
 
-        thumbnailsContainer.innerHTML = '';
+        this._mainImage = galleryPanel.querySelector('.gallery-main-image');
+        this._thumbnails = galleryPanel.querySelector('.gallery-thumbnails');
+        this._arrowLeft = galleryPanel.querySelector('.gallery-left');
+        this._arrowRight = galleryPanel.querySelector('.gallery-right');
 
-        const onThumbClick = (e) => {
+        this._thumbnails?.replaceChildren();
+
+        this._onThumbClick = (e) => {
             const img = e.target.closest('img.thumbnail');
             if (!img) return;
-
-            const idx = img.dataset.index | 0;
-            currentIndex = idx;
-            mainImage.src = lines[currentIndex];
-
-            thumbnailsContainer.querySelectorAll('.thumbnail').forEach((t, i) => {
-                t.className = i === currentIndex ? 'thumbnail active' : 'thumbnail';
-            });
+            this.setIndex(lines, img.dataset.index | 0);
         };
 
-        thumbnailsContainer.addEventListener('click', onThumbClick);
+        this._onLeft = () => this.setIndex(lines, this._currentIndex - 1);
+        this._onRight = () => this.setIndex(lines, this._currentIndex + 1);
+
+        this._thumbnails?.addEventListener('click', this._onThumbClick);
+        this._arrowLeft?.addEventListener('click', this._onLeft);
+        this._arrowRight?.addEventListener('click', this._onRight);
 
         lines.forEach((url, index) => {
             const thumb = document.createElement('img');
             thumb.src = url;
             thumb.dataset.index = index;
-
-            if (index === 0) {
-                thumb.className = 'thumbnail active';
-                mainImage.src = url;
-                currentIndex = 0;
-            } else {
-                thumb.className = 'thumbnail';
-            }
-
-            thumbnailsContainer.appendChild(thumb);
+            thumb.className = index === 0 ? 'thumbnail active' : 'thumbnail';
+            this._thumbnails?.appendChild(thumb);
         });
 
-        setTimeout(() => {
-            thumbnailsContainer.scrollLeft = 0;
-        }, 10);
+        this._currentIndex = 0;
+        if (this._mainImage) this._mainImage.src = lines[0];
 
-        const updateImage = (index) => {
-            if (index < 0) index = lines.length - 1;
-            if (index >= lines.length) index = 0;
-            currentIndex = index;
-            mainImage.src = lines[currentIndex];
-            thumbnailsContainer.querySelectorAll('.thumbnail').forEach((t, i) => {
-                t.className = i === currentIndex ? 'thumbnail active' : 'thumbnail';
-            });
-        };
-
-        const onLeft = () => updateImage(currentIndex - 1);
-        const onRight = () => updateImage(currentIndex + 1);
-
-        arrowLeft?.addEventListener('click', onLeft);
-        arrowRight?.addEventListener('click', onRight);
-
-        this._arrowHandlers = { arrowLeft, arrowRight, onLeft, onRight, thumbnailsContainer, onThumbClick };
+        setTimeout(() => { if (this._thumbnails) this._thumbnails.scrollLeft = 0; }, 10);
     };
 
     galleryButton.addEventListener('click', this._onOpen);
 
     const closeBtn = galleryPanel.querySelector('.gallery-close');
     if (closeBtn) {
-        const hideGallery = () => {
-            galleryPanel.classList.add('hidden');
-        };
-        const onClick = hideGallery;
-        const onTouch = hideGallery;
-        const onPointer = hideGallery;
-
-        closeBtn.addEventListener('click', onClick);
-        closeBtn.addEventListener('touchstart', onTouch, { passive: true });
-        closeBtn.addEventListener('pointerdown', onPointer, { passive: true });
-
-        this._closeHandlers = { closeBtn, onClick, onTouch, onPointer };
+        this._onClose = () => this.setHidden(true);
+        closeBtn.addEventListener('click', this._onClose);
+        closeBtn.addEventListener('touchstart', this._onClose, { passive: true });
+        closeBtn.addEventListener('pointerdown', this._onClose, { passive: true });
     }
 
-    galleryPanel.classList.add('hidden');
-
     this._onKeyDown = (e) => {
-        if (e.key === 'Escape' && !galleryPanel.classList.contains('hidden')) {
-            galleryPanel.classList.add('hidden');
+        if (e.key === 'Escape' && this._galleryPanel && !this._galleryPanel.classList.contains('hidden')) {
+            this.setHidden(true);
         }
     };
     document.addEventListener('keydown', this._onKeyDown);
+
+    this.setHidden(true);
 };
 
 Gallery.prototype.onDestroy = function () {
     if (this._rafId) cancelAnimationFrame(this._rafId);
     this._rafId = 0;
 
-    if (this._galleryButton && this._onOpen) {
-        this._galleryButton.removeEventListener('click', this._onOpen);
+    if (this._galleryButton && this._onOpen) this._galleryButton.removeEventListener('click', this._onOpen);
+
+    if (this._galleryPanel) {
+        const closeBtn = this._galleryPanel.querySelector('.gallery-close');
+        if (closeBtn && this._onClose) {
+            closeBtn.removeEventListener('click', this._onClose);
+            closeBtn.removeEventListener('touchstart', this._onClose);
+            closeBtn.removeEventListener('pointerdown', this._onClose);
+        }
     }
 
-    if (this._closeHandlers) {
-        const { closeBtn, onClick, onTouch, onPointer } = this._closeHandlers;
-        closeBtn.removeEventListener('click', onClick);
-        closeBtn.removeEventListener('touchstart', onTouch);
-        closeBtn.removeEventListener('pointerdown', onPointer);
-        this._closeHandlers = null;
-    }
+    this._thumbnails?.removeEventListener('click', this._onThumbClick);
+    this._arrowLeft?.removeEventListener('click', this._onLeft);
+    this._arrowRight?.removeEventListener('click', this._onRight);
 
-    if (this._arrowHandlers) {
-        const { arrowLeft, arrowRight, onLeft, onRight, thumbnailsContainer, onThumbClick } = this._arrowHandlers;
-        arrowLeft?.removeEventListener('click', onLeft);
-        arrowRight?.removeEventListener('click', onRight);
-        thumbnailsContainer?.removeEventListener('click', onThumbClick);
-        this._arrowHandlers = null;
-    }
-
-    if (this._onKeyDown) {
-        document.removeEventListener('keydown', this._onKeyDown);
-        this._onKeyDown = null;
-    }
+    if (this._onKeyDown) document.removeEventListener('keydown', this._onKeyDown);
 
     this._galleryButton = null;
     this._galleryPanel = null;
+
+    this._mainImage = null;
+    this._thumbnails = null;
+    this._arrowLeft = null;
+    this._arrowRight = null;
+
     this._onOpen = null;
+    this._onKeyDown = null;
+    this._onThumbClick = null;
+    this._onLeft = null;
+    this._onRight = null;
+    this._onClose = null;
 };

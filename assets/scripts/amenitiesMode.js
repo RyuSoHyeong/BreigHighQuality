@@ -8,10 +8,11 @@ AmenitiesMode.attributes.add('fpsLockerState', { type: 'json' });
 AmenitiesMode.prototype.initialize = function () {
     this.cameraEntity = this.app.root.findByName('Camera');
     this.amenitiesContainer = document.querySelector('#amenities-container');
+
     this.infoPanel = document.querySelector('#info-panel');
-    this.panelImage = this.infoPanel.querySelector('.panel-image');
-    this.panelTitle = this.infoPanel.querySelector('.panel-title');
-    this.panelDescription = this.infoPanel.querySelector('.panel-description');
+    this.panelImage = this.infoPanel?.querySelector('.panel-image') || null;
+    this.panelTitle = this.infoPanel?.querySelector('.panel-title') || null;
+    this.panelDescription = this.infoPanel?.querySelector('.panel-description') || null;
 
     this.amenitiesData = [];
     this._screenPos = new pc.Vec3();
@@ -20,122 +21,181 @@ AmenitiesMode.prototype.initialize = function () {
     this._canvasRect = null;
     this._rectDirty = true;
 
-    this._modeButtons = Array.from(document.querySelectorAll('.mode-panel .button'));
-    this._modeBtn1 = document.querySelector('[data-mode="1"]');
-    this._modeBtn0 = document.querySelector('[data-mode="0"]');
-
-    this._onModeBtn1Click = () => {
-        this._modeButtons.forEach(btn => btn.classList.remove('active'));
-        this._modeBtn1.classList.add('active');
-
-        const orbit = this.cameraEntity?.script?.orbitCamera;
-        if (orbit) {
-            orbit.autoRotateMode = 1;
-            if (orbit.setAutoRotateEnabled) orbit.setAutoRotateEnabled(false);
-        }
-
-        this.loadDataFromCsv();
-    };
-
-    this._onModeBtn0Click = () => {
-        this._modeButtons.forEach(btn => btn.classList.remove('active'));
-        this._modeBtn0.classList.add('active');
-
-        this.clearAmenities();
-        this.infoPanel.classList.remove('visible');
-
-        const orbit = this.cameraEntity?.script?.orbitCamera;
-        if (orbit) {
-            orbit.autoRotateMode = 0;
-            if (orbit.setAutoRotateEnabled) orbit.setAutoRotateEnabled(true);
-
-            orbit.adjustDistanceForOrientation();
-            orbit.setDistanceLimits(orbit.minDistance, orbit.maxDistance);
-
-            const homeTarget = new pc.Vec3(-0.217, 0.204, 0.025);
-            orbit.focusOn(homeTarget);
-            orbit.lookAtPointSmoothly(homeTarget);
-        }
-    };
-
-    if (this._modeBtn1) this._modeBtn1.addEventListener('click', this._onModeBtn1Click);
-    if (this._modeBtn0) this._modeBtn0.addEventListener('click', this._onModeBtn0Click);
+    this._csvCache = new Map();
+    this._loadToken = 0;
 
     this.currentState = "0";
 
+    this._modeButtons = Array.from(document.querySelectorAll('.mode-panel .button'));
+    this._modeBtn0 = document.querySelector('[data-mode="0"]');
+    this._modeBtn1 = document.querySelector('[data-mode="1"]');
+
     this._stateButtons = Array.from(document.querySelectorAll('.state-panel .button'));
-    this._onStateClick = (e) => {
-        const btn = e.currentTarget;
-        this.currentState = btn.dataset.state;
 
-        const activeMode = document.querySelector('.mode-panel .button.active')?.dataset.mode;
-        if (activeMode === "1") {
-            this.loadDataFromCsv();
-        }
-    };
-    this._stateButtons.forEach(btn => btn.addEventListener('click', this._onStateClick));
+    this._homeTarget = new pc.Vec3(-0.217, 0.204, 0.025);
 
-    this._onAmenityClick = (e) => {
-        const item = e.target.closest('.amenities');
-        if (!item) return;
+    this._onModeBtn0Click = this.onMode0Click.bind(this);
+    this._onModeBtn1Click = this.onMode1Click.bind(this);
+    this._onStateClick = this.onStateClick.bind(this);
+    this._onAmenityClick = this.onAmenityClick.bind(this);
+    this._onViewportDirty = () => { this._rectDirty = true; };
 
-        const index = item.dataset.index | 0;
-        const data = this.amenitiesData[index];
-        if (!data) return;
+    this.bindDomEvents();
+};
 
-        this.panelImage.src = data.image;
-        this.panelTitle.textContent = data.title;
-        this.panelDescription.textContent = data.description;
-        this.infoPanel.classList.add('visible');
-        this.focusCameraOn(data.worldPos);
-    };
+AmenitiesMode.prototype.bindDomEvents = function () {
+    if (this._modeBtn0) this._modeBtn0.addEventListener('click', this._onModeBtn0Click);
+    if (this._modeBtn1) this._modeBtn1.addEventListener('click', this._onModeBtn1Click);
+
+    if (this._stateButtons && this._stateButtons.length) {
+        this._stateButtons.forEach(btn => btn.addEventListener('click', this._onStateClick));
+    }
 
     if (this.amenitiesContainer) {
         this.amenitiesContainer.addEventListener('click', this._onAmenityClick);
     }
 
-    this._onResize = () => {
-        this._rectDirty = true;
-    };
-    window.addEventListener('resize', this._onResize, { passive: true });
-    window.addEventListener('scroll', this._onResize, { passive: true });
+    window.addEventListener('resize', this._onViewportDirty, { passive: true });
+    window.addEventListener('scroll', this._onViewportDirty, { passive: true });
+};
 
-    this._loadToken = 0;
+AmenitiesMode.prototype.unbindDomEvents = function () {
+    if (this._modeBtn0) this._modeBtn0.removeEventListener('click', this._onModeBtn0Click);
+    if (this._modeBtn1) this._modeBtn1.removeEventListener('click', this._onModeBtn1Click);
+
+    if (this._stateButtons && this._stateButtons.length) {
+        this._stateButtons.forEach(btn => btn.removeEventListener('click', this._onStateClick));
+    }
+
+    if (this.amenitiesContainer) {
+        this.amenitiesContainer.removeEventListener('click', this._onAmenityClick);
+    }
+
+    window.removeEventListener('resize', this._onViewportDirty);
+    window.removeEventListener('scroll', this._onViewportDirty);
+};
+
+AmenitiesMode.prototype.setActiveModeButton = function (modeStr) {
+    if (!this._modeButtons) return;
+    this._modeButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === modeStr));
+};
+
+AmenitiesMode.prototype.getOrbit = function () {
+    return this.cameraEntity?.script?.orbitCamera || null;
+};
+
+AmenitiesMode.prototype.onMode1Click = function () {
+    this.setActiveModeButton("1");
+
+    const orbit = this.getOrbit();
+    if (orbit) {
+        orbit.autoRotateMode = 1;
+        orbit.setAutoRotateEnabled?.(false);
+    }
+
+    this.loadDataFromCsv();
+};
+
+AmenitiesMode.prototype.onMode0Click = function () {
+    this.setActiveModeButton("0");
+
+    this.clearAmenities();
+    this.infoPanel?.classList.remove('visible');
+
+    const orbit = this.getOrbit();
+    if (!orbit) return;
+
+    orbit.autoRotateMode = 0;
+    orbit.setAutoRotateEnabled?.(true);
+
+    orbit.adjustDistanceForOrientation?.();
+    orbit.setDistanceLimits?.(orbit.minDistance, orbit.maxDistance);
+
+    orbit.focusOn?.(this._homeTarget);
+    orbit.lookAtPointSmoothly?.(this._homeTarget);
+};
+
+AmenitiesMode.prototype.onStateClick = function (e) {
+    const btn = e.currentTarget;
+    this.currentState = btn?.dataset?.state ?? "0";
+
+    const activeMode = document.querySelector('.mode-panel .button.active')?.dataset.mode;
+    if (activeMode === "1") this.loadDataFromCsv();
+};
+
+AmenitiesMode.prototype.onAmenityClick = function (e) {
+    const item = e.target.closest('.amenities');
+    if (!item) return;
+
+    const index = item.dataset.index | 0;
+    const data = this.amenitiesData[index];
+    if (!data) return;
+
+    if (this.panelImage) this.panelImage.src = data.image;
+    if (this.panelTitle) this.panelTitle.textContent = data.title;
+    if (this.panelDescription) this.panelDescription.textContent = data.description;
+
+    this.infoPanel?.classList.add('visible');
+    this.focusCameraOn(data.worldPos);
 };
 
 AmenitiesMode.prototype.clearAmenities = function () {
-    if (this.amenitiesContainer) this.amenitiesContainer.innerHTML = '';
+    if (this.amenitiesContainer) this.amenitiesContainer.replaceChildren();
     this.amenitiesData.length = 0;
 };
 
 AmenitiesMode.prototype.loadDataFromCsv = function () {
-    // const lang = (window.currentLang || navigator.language || 'en').slice(0, 2);
     const lang = 'en';
     const mode = this.currentState === "0" ? "Current" : "Future";
 
-    const path = `/assets/data/dataAmenities${mode}_${lang}.csv`;
-    const fallback = `/assets/data/dataAmenities${mode}_en.csv`;
+    const path = `assets/data/dataAmenities${mode}_${lang}.csv`;
+    const fallback = `assets/data/dataAmenities${mode}_en.csv`;
 
     const token = ++this._loadToken;
 
-    this.app.assets.loadFromUrl(path, 'text', (err, asset) => {
-        if (token !== this._loadToken) return;
-
-        if (err) {
-            console.warn(`Не удалось загрузить ${path}, пробуем fallback: ${fallback}`);
-            this.app.assets.loadFromUrl(fallback, 'text', (err2, fallbackAsset) => {
-                if (token !== this._loadToken) return;
-
-                if (err2) {
-                    console.error("Не удалось загрузить fallback CSV:", fallback, err2);
-                    return;
-                }
-                this.parseCsv(fallbackAsset.resource);
-            });
-            return;
+    const tryParseCached = (url) => {
+        const cached = this._csvCache.get(url);
+        if (cached) {
+            this.parseCsv(cached);
+            return true;
         }
+        return false;
+    };
 
-        this.parseCsv(asset.resource);
+    const cleanupTempAsset = (asset) => {
+        if (!asset) return;
+        asset.unload?.();
+        this.app.assets.remove(asset);
+    };
+
+    const loadText = (url, onOk, onFail) => {
+        if (tryParseCached(url)) return;
+
+        this.app.assets.loadFromUrl(url, 'text', (err, asset) => {
+            if (token !== this._loadToken) {
+                cleanupTempAsset(asset);
+                return;
+            }
+
+            if (err || !asset) {
+                cleanupTempAsset(asset);
+                onFail?.(err);
+                return;
+            }
+
+            const text = asset.resource || '';
+            this._csvCache.set(url, text);
+
+            cleanupTempAsset(asset);
+            onOk?.(text);
+        });
+    };
+
+    loadText(path, (text) => this.parseCsv(text), () => {
+        console.warn(`Can't load ${path}, try fallback: ${fallback}`);
+        loadText(fallback, (text) => this.parseCsv(text), (err2) => {
+            console.error("Can't load fallback CSV:", fallback, err2);
+        });
     });
 };
 
@@ -143,13 +203,12 @@ AmenitiesMode.prototype.parseCsv = function (csvText) {
     const rows = csvText.trim().split('\n');
 
     this.clearAmenities();
-    this.infoPanel.classList.remove('visible');
+    this.infoPanel?.classList.remove('visible');
 
     const fragment = document.createDocumentFragment();
 
     for (let index = 0; index < rows.length; index++) {
-        const row = rows[index];
-        const parts = row.split(';');
+        const parts = rows[index].split(';');
         if (parts.length < 7) continue;
 
         const icon = parts[0].trim();
@@ -177,11 +236,9 @@ AmenitiesMode.prototype.parseCsv = function (csvText) {
 
         fragment.appendChild(dom);
 
-        const worldPos = new pc.Vec3(x, y, z);
-
         this.amenitiesData[index] = {
             dom,
-            worldPos,
+            worldPos: new pc.Vec3(x, y, z),
             title,
             image,
             description,
@@ -191,44 +248,36 @@ AmenitiesMode.prototype.parseCsv = function (csvText) {
         };
     }
 
-    if (this.amenitiesContainer) {
-        this.amenitiesContainer.appendChild(fragment);
-    }
-
+    this.amenitiesContainer?.appendChild(fragment);
     this._rectDirty = true;
 };
 
 AmenitiesMode.prototype.getCanvasRect = function () {
     if (!this._rectDirty && this._canvasRect) return this._canvasRect;
-
-    const canvas = this.app.graphicsDevice.canvas;
-    this._canvasRect = canvas.getBoundingClientRect();
+    this._canvasRect = this.app.graphicsDevice.canvas.getBoundingClientRect();
     this._rectDirty = false;
     return this._canvasRect;
 };
 
 AmenitiesMode.prototype.updateDomPositions = function () {
-    const camera = this.cameraEntity;
-    if (!camera || !camera.camera) return;
+    const cam = this.cameraEntity?.camera;
+    if (!cam) return;
 
     const rect = this.getCanvasRect();
     const screenPos = this._screenPos;
-
     const threshold = 0.25;
 
     for (let i = 0; i < this.amenitiesData.length; i++) {
         const data = this.amenitiesData[i];
         if (!data) continue;
 
-        const dom = data.dom;
-
-        camera.camera.worldToScreen(data.worldPos, screenPos);
+        cam.worldToScreen(data.worldPos, screenPos);
 
         const onScreen = (screenPos.z > 0 && isFinite(screenPos.x) && isFinite(screenPos.y));
         if (!onScreen) {
             if (data.visible) {
                 data.visible = false;
-                dom.style.display = 'none';
+                data.dom.style.display = 'none';
             }
             continue;
         }
@@ -238,7 +287,7 @@ AmenitiesMode.prototype.updateDomPositions = function () {
 
         if (!data.visible) {
             data.visible = true;
-            dom.style.display = 'block';
+            data.dom.style.display = 'block';
             data.lastX = null;
             data.lastY = null;
         }
@@ -247,7 +296,7 @@ AmenitiesMode.prototype.updateDomPositions = function () {
         const dy = data.lastY === null ? Infinity : Math.abs(y - data.lastY);
 
         if (dx > threshold || dy > threshold) {
-            dom.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+            data.dom.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
             data.lastX = x;
             data.lastY = y;
         }
@@ -256,17 +305,13 @@ AmenitiesMode.prototype.updateDomPositions = function () {
 
 AmenitiesMode.prototype.postUpdate = function (dt) {
     const fpsCapActive = !!this.fpsLockerState?.active;
-
-    const orbit = this.cameraEntity?.script?.orbitCamera;
+    const orbit = this.getOrbit();
     const isInteracting = !!orbit && (orbit.touching || orbit.isZooming);
 
     if (fpsCapActive && !isInteracting) {
-        const targetHz = 30;
-        const step = 1 / targetHz;
-
+        const step = 1 / 30;
         this._domUpdateAcc += dt;
         if (this._domUpdateAcc < step) return;
-
         this._domUpdateAcc %= step;
     } else {
         this._domUpdateAcc = 0;
@@ -276,39 +321,32 @@ AmenitiesMode.prototype.postUpdate = function (dt) {
 };
 
 AmenitiesMode.prototype.focusCameraOn = function (targetPosition) {
-    if (!this.cameraEntity || !this.cameraEntity.script || !this.cameraEntity.script.orbitCamera) return;
+    const orbit = this.getOrbit();
+    if (!orbit) return;
 
-    const orbit = this.cameraEntity.script.orbitCamera;
     orbit.isZooming = false;
     orbit.touching = false;
     orbit.lastTouchDistance = null;
 
-    orbit.setAmenitiesDistanceByOrientation();
-    orbit.focusOn(targetPosition);
-    orbit.lookAtPointSmoothly(targetPosition);
+    orbit.setAmenitiesDistanceByOrientation?.();
+    orbit.focusOn?.(targetPosition);
+    orbit.lookAtPointSmoothly?.(targetPosition);
 };
 
 AmenitiesMode.prototype.onDestroy = function () {
-    if (this._modeBtn1) this._modeBtn1.removeEventListener('click', this._onModeBtn1Click);
-    if (this._modeBtn0) this._modeBtn0.removeEventListener('click', this._onModeBtn0Click);
-
-    if (this._stateButtons) {
-        this._stateButtons.forEach(btn => btn.removeEventListener('click', this._onStateClick));
-    }
-
-    if (this.amenitiesContainer) {
-        this.amenitiesContainer.removeEventListener('click', this._onAmenityClick);
-    }
-
-    window.removeEventListener('resize', this._onResize);
-    window.removeEventListener('scroll', this._onResize);
+    this.unbindDomEvents();
 
     this._loadToken++;
-
     this.clearAmenities();
 
     this._modeButtons = null;
     this._stateButtons = null;
-    this._modeBtn1 = null;
     this._modeBtn0 = null;
+    this._modeBtn1 = null;
+
+    this.amenitiesContainer = null;
+    this.infoPanel = null;
+    this.panelImage = null;
+    this.panelTitle = null;
+    this.panelDescription = null;
 };

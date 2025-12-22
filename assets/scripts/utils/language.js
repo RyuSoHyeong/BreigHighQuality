@@ -1,7 +1,9 @@
 export async function loadLanguage() {
+    /*
     const userLang = (navigator.language || 'en').split('-')[0];
     const supportedLangs = ['en', 'ru', 'ko', 'zh', 'de', 'fr', 'es', 'ar', 'ja'];
-    //const lang = supportedLangs.includes(userLang) ? userLang : 'en';
+    const lang = supportedLangs.includes(userLang) ? userLang : 'en';
+    */
     const lang = 'en';
 
     try {
@@ -10,11 +12,12 @@ export async function loadLanguage() {
             console.error(`Language file not found: ${lang}`);
             return;
         }
+
         const translations = await response.json();
 
-        document.querySelectorAll('[data-lng]').forEach(el => {
+        document.querySelectorAll('[data-lng]').forEach((el) => {
             const key = el.getAttribute('data-lng');
-            if (Object.prototype.hasOwnProperty.call(translations, key)) {
+            if (key && Object.prototype.hasOwnProperty.call(translations, key)) {
                 el.textContent = translations[key];
             }
         });

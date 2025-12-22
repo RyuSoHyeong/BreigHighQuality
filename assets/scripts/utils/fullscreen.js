@@ -1,79 +1,116 @@
 export function setupFullscreenButton() {
-    const btn = document.getElementById("fullscreen-button");
-    if (!btn) return;
+    const btn = document.getElementById('fullscreen-button');
+    if (!btn) return () => {};
 
     const el = document.documentElement;
 
     const enterIcon = 'assets/images/icons/ui_fullscreen.png';
     const exitIcon = 'assets/images/icons/ui_fullscreen_out.png';
 
-    btn.style.display = "none";
+    btn.style.display = 'none';
 
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const isTelegram = /Telegram/.test(navigator.userAgent);
-    const isAndroidWV = /Android/.test(navigator.userAgent) && /wv/.test(navigator.userAgent);
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+    const isTelegram = /Telegram/.test(ua);
+    const isAndroidWV = /Android/.test(ua) && /wv/.test(ua);
     const isIframe = window !== window.parent;
 
-    if (
-        isIOS || isTelegram || isAndroidWV || (isIframe && !document.fullscreenEnabled && !document.webkitFullscreenEnabled)
-    ) {
-        return;
+    if (isIOS || isTelegram || isAndroidWV || (isIframe && !document.fullscreenEnabled && !document.webkitFullscreenEnabled)) {
+        return () => {};
     }
 
     const request = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-    if (!request) return;
+    if (!request) return () => {};
+
+    const getIsFullscreen = () => !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+    );
+
+    const exitFullscreen = () => {
+        const exit =
+            document.exitFullscreen ||
+            document.webkitExitFullscreen ||
+            document.mozExitFullscreen ||
+            document.mozCancelFullScreen ||
+            document.msExitFullscreen;
+
+        if (exit) exit.call(document);
+    };
+
+    const updateIcon = () => {
+        btn.style.backgroundImage = `url(${getIsFullscreen() ? exitIcon : enterIcon})`;
+    };
+
+    const onClick = () => {
+        if (getIsFullscreen()) {
+            exitFullscreen();
+            return;
+        }
+
+        const req =
+            el.requestFullscreen ||
+            el.webkitRequestFullscreen ||
+            el.mozRequestFullScreen ||
+            el.msRequestFullscreen;
+
+        if (req) req.call(el);
+    }
+
+    const showButtonIfAllowed = () => {
+        btn.style.display = 'block';
+        btn.style.backgroundImage = `url(${enterIcon})`;
+        updateIcon();
+    };
 
     const testEl = document.createElement('div');
     document.body.appendChild(testEl);
-    const testRequest = testEl.requestFullscreen || testEl.webkitRequestFullscreen || testEl.mozRequestFullScreen || testEl.msRequestFullscreen;
+
+    const testRequest =
+        testEl.requestFullscreen ||
+        testEl.webkitRequestFullscreen ||
+        testEl.mozRequestFullScreen ||
+        testEl.msRequestFullscreen;
+
+    const cleanupTestEl = () => {
+        if (testEl.parentElement) testEl.parentElement.removeChild(testEl);
+    };
 
     if (testRequest) {
         try {
             const res = testRequest.call(testEl);
-            if (res && typeof res.then === "function") {
+            if (res && typeof res.then === 'function') {
                 res.then(() => {
                     document.exitFullscreen?.();
                     document.webkitExitFullscreen?.();
-                    btn.style.display = "block";
-                    btn.style.backgroundImage = `url(${enterIcon})`;
-                    document.body.removeChild(testEl);
-                }).catch(() => {
-                    document.body.removeChild(testEl);
-                });
+                    cleanupTestEl();
+                    showButtonIfAllowed();
+                }).catch(() => cleanupTestEl());
             } else {
-                btn.style.display = "block";
-                btn.style.backgroundImage = `url(${enterIcon})`;
-                document.body.removeChild(testEl);
+                cleanupTestEl();
+                showButtonIfAllowed();
             }
-        } catch (err) {
-            document.body.removeChild(testEl);
+        } catch (e) {
+            cleanupTestEl();
         }
+    } else {
+        cleanupTestEl();
     }
 
-    btn.addEventListener("click", () => {
-        const isFull = !!(
-            document.fullscreenElement ||
-            document.webkitFullscreenElement ||
-            document.mozFullScreenElement ||
-            document.msFullscreenElement
-        );
+    btn.addEventListener('click', onClick);
+    document.addEventListener('fullscreenchange', updateIcon);
+    document.addEventListener('webkitfullscreenchange', updateIcon);
+    document.addEventListener('mozfullscreenchange', updateIcon);
+    document.addEventListener('MSFullscreenChange', updateIcon);
 
-        if (isFull) {
-            const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
-            if (exit) exit.call(document);
-        } else {
-            const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-            if (req) req.call(el);
-        }
-    });
-
-    function updateIcon() {
-        const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
-        btn.style.backgroundImage = `url(${isFull ? exitIcon : enterIcon})`;
-    }
-
-    document.addEventListener("fullscreenchange", updateIcon);
-    document.addEventListener("webkitfullscreenchange", updateIcon);
-    document.addEventListener("mozfullscreenchange", updateIcon);
-    document.addEventListener("MSFullscreenChange", updateIcon);
+    return () => {
+        btn.removeEventListener('click', onClick);
+        document.removeEventListener('fullscreenchange', updateIcon);
+        document.removeEventListener('webkitfullscreenchange', updateIcon);
+        document.removeEventListener('mozfullscreenchange', updateIcon);
+        document.removeEventListener('MSFullscreenChange', updateIcon);
+    };
 }

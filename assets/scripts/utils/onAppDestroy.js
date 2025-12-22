@@ -6,11 +6,7 @@ export function createDestroyRegistry(app) {
         if (typeof fn !== 'function') return;
 
         if (isDestroyed) {
-            try {
-                fn();
-            } catch (e) {
-                console.warn('Destroy callback error', e);
-            }
+            try { fn(); } catch (e) { console.warn('Destroy callback error', e); }
             return;
         }
 
@@ -21,11 +17,7 @@ export function createDestroyRegistry(app) {
         isDestroyed = true;
 
         for (let i = 0; i < callbacks.length; i++) {
-            try {
-                callbacks[i]();
-            } catch (e) {
-                console.warn('Destroy callback error', e);
-            }
+            try { callbacks[i](); } catch (e) { console.warn('Destroy callback error', e); }
         }
 
         callbacks.length = 0;

@@ -1,26 +1,28 @@
+const ORIGINAL_RENDER = Symbol('fpslocker:originalRender');
+
 export function createFpsLocker(app, options = {}) {
-    const {
-        toggleElementId = 'fps30',
-        cappedFps = 30
-    } = options;
+    const { toggleElementId = 'fps30', cappedFps = 30 } = options;
 
     const state = {
-        intervalId: null,
+        intervalId: 0,
         active: false,
         fps: 0,
         renderFrameCounter: 0
     };
 
-    const originalRender = app.render.bind(app);
-    app.render = function () {
-        state.renderFrameCounter++;
-        originalRender();
-    };
+    if (!app[ORIGINAL_RENDER]) {
+        app[ORIGINAL_RENDER] = app.render.bind(app);
+
+        app.render = function () {
+            state.renderFrameCounter++;
+            app[ORIGINAL_RENDER]();
+        };
+    }
 
     const applyCap = (targetFps) => {
         if (state.intervalId) {
             clearInterval(state.intervalId);
-            state.intervalId = null;
+            state.intervalId = 0;
         }
 
         if (!targetFps || targetFps >= 60) {
@@ -35,36 +37,29 @@ export function createFpsLocker(app, options = {}) {
         state.active = true;
         state.fps = targetFps;
 
-        const intervalMs = 1000 / targetFps;
-
         state.intervalId = window.setInterval(() => {
             app.renderNextFrame = true;
-        }, intervalMs);
+        }, 1000 / targetFps);
     };
 
     const toggleEl = document.getElementById(toggleElementId);
-    const onToggleChange = (e) => {
-        applyCap(e.target.checked ? cappedFps : 0);
-    };
+    const onToggleChange = (e) => applyCap(e?.target?.checked ? cappedFps : 0);
 
-    if (toggleEl) {
-        toggleEl.addEventListener('change', onToggleChange);
-    }
+    if (toggleEl) toggleEl.addEventListener('change', onToggleChange);
 
     const destroy = () => {
-        if (toggleEl) {
-            toggleEl.removeEventListener('change', onToggleChange);
-        }
+        if (toggleEl) toggleEl.removeEventListener('change', onToggleChange);
+
         if (state.intervalId) {
             clearInterval(state.intervalId);
-            state.intervalId = null;
+            state.intervalId = 0;
         }
-        app.render = originalRender;
+
+        if (app[ORIGINAL_RENDER]) {
+            app.render = app[ORIGINAL_RENDER];
+            app[ORIGINAL_RENDER] = null;
+        }
     };
 
-    return {
-        state,
-        setFpsCap: applyCap,
-        destroy
-    };
+    return { state, setFpsCap: applyCap, destroy };
 }

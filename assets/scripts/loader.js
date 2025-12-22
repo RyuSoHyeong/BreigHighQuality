@@ -29,7 +29,6 @@ export function createSplash() {
 export function setSplashProgress(progress) {
     const bar = document.getElementById('progress-bar');
     const text = document.getElementById('progress-text');
-
     if (!bar && !text) return;
 
     let percent = progress * 100;
@@ -37,59 +36,44 @@ export function setSplashProgress(progress) {
 
     const clamped = Math.max(0, Math.min(100, percent));
 
-    if (bar) {
-        bar.style.width = `${clamped}%`;
-    }
-
-    if (text) {
-        text.textContent = `${Math.round(clamped)}%`;
-    }
+    if (bar) bar.style.width = `${clamped}%`;
+    if (text) text.textContent = `${Math.round(clamped)}%`;
 }
 
 export function hideSplash() {
     const wrapper = document.getElementById('application-splash-wrapper');
-    if (!wrapper) return;
-
-    wrapper.parentElement?.removeChild(wrapper);
+    wrapper?.parentElement?.removeChild(wrapper);
 }
 
 function createUrlResolver(assetList) {
     const map = new Map();
     const keys = [];
 
-    assetList.forEach((info) => {
-        const asset = info.asset;
-        let url = null;
+    for (const info of assetList) {
+        const a = info.asset;
+        const url =
+            (a.file && a.file.url) ||
+            (typeof a.getFileUrl === "function" && a.getFileUrl()) ||
+            a.url ||
+            null;
 
-        if (asset.file && asset.file.url) {
-            url = asset.file.url;
-        } else if (typeof asset.getFileUrl === "function") {
-            url = asset.getFileUrl();
-        } else if (asset.url) {
-            url = asset.url;
-        }
+        if (!url) continue;
 
-        if (!url) return;
-
-        const clean = url.split("?")[0];
+        const clean = String(url).split("?")[0];
         const short = clean.substring(clean.lastIndexOf("/") + 1);
 
-        [clean, short].forEach((key) => {
+        for (const key of [clean, short]) {
             if (key && !map.has(key)) {
                 map.set(key, info);
                 keys.push(key);
             }
-        });
-    });
+        }
+    }
 
     return function resolve(url) {
         if (!url) return null;
 
-        const str =
-            typeof url === "string"
-                ? url
-                : (url && url.url) || String(url);
-
+        const str = typeof url === "string" ? url : (url && url.url) || String(url);
         const clean = str.split("?")[0];
         const short = clean.substring(clean.lastIndexOf("/") + 1);
 
@@ -97,25 +81,18 @@ function createUrlResolver(assetList) {
         if (map.has(short)) return map.get(short);
 
         for (const key of keys) {
-            if (clean.endsWith(key) || clean.includes(key)) {
-                return map.get(key);
-            }
+            if (clean.endsWith(key) || clean.includes(key)) return map.get(key);
         }
         return null;
     };
 }
 
 function patchNetworkProgress(resolveInfo, onBytes) {
-    if (XMLHttpRequest.prototype._pcProgressPatched) {
-        return function restore() {};
-    }
+    if (XMLHttpRequest.prototype._pcProgressPatched) return () => {};
 
     const originalOpen = XMLHttpRequest.prototype.open;
     const originalSend = XMLHttpRequest.prototype.send;
-    const originalFetch =
-        typeof window !== "undefined" && window.fetch
-            ? window.fetch.bind(window)
-            : null;
+    const originalFetch = window.fetch ? window.fetch.bind(window) : null;
 
     XMLHttpRequest.prototype._pcProgressPatched = true;
 
@@ -130,11 +107,10 @@ function patchNetworkProgress(resolveInfo, onBytes) {
 
         if (info && info.size) {
             const size = info.size;
-
             const finalize = () => onBytes(info, size);
 
             xhr.addEventListener("progress", (e) => {
-                if (!e || typeof e.loaded !== "number" || !size) return;
+                if (!e || typeof e.loaded !== "number") return;
                 onBytes(info, Math.min(size, e.loaded));
             });
 
@@ -148,22 +124,16 @@ function patchNetworkProgress(resolveInfo, onBytes) {
 
     if (originalFetch) {
         window.fetch = function (input, init) {
-            const url =
-                typeof input === "string"
-                    ? input
-                    : (input && input.url) || null;
-
+            const url = typeof input === "string" ? input : (input && input.url) || null;
             const info = resolveInfo(url);
-            if (!info || !info.size) {
-                return originalFetch(input, init);
-            }
+
+            if (!info || !info.size) return originalFetch(input, init);
 
             const size = info.size;
             let loaded = info.loadedBytes || 0;
 
             return originalFetch(input, init).then((response) => {
                 const body = response.body;
-
                 if (!body || !body.getReader) {
                     onBytes(info, size);
                     return response;
@@ -173,27 +143,24 @@ function patchNetworkProgress(resolveInfo, onBytes) {
 
                 const stream = new ReadableStream({
                     start(controller) {
-                        function read() {
-                            reader
-                                .read()
-                                .then(({ done, value }) => {
-                                    if (done) {
-                                        onBytes(info, size);
-                                        controller.close();
-                                        return;
-                                    }
-
-                                    loaded += value.byteLength;
-                                    onBytes(info, Math.min(size, loaded));
-
-                                    controller.enqueue(value);
-                                    read();
-                                })
-                                .catch(() => {
+                        const read = () => {
+                            reader.read().then(({ done, value }) => {
+                                if (done) {
                                     onBytes(info, size);
                                     controller.close();
-                                });
-                        }
+                                    return;
+                                }
+
+                                loaded += value.byteLength;
+                                onBytes(info, Math.min(size, loaded));
+
+                                controller.enqueue(value);
+                                read();
+                            }).catch(() => {
+                                onBytes(info, size);
+                                controller.close();
+                            });
+                        };
 
                         read();
                     }
@@ -214,17 +181,15 @@ function patchNetworkProgress(resolveInfo, onBytes) {
     return function restore() {
         XMLHttpRequest.prototype.open = originalOpen;
         XMLHttpRequest.prototype.send = originalSend;
-        if (originalFetch) {
-            window.fetch = originalFetch;
-        }
+        if (originalFetch) window.fetch = originalFetch;
         XMLHttpRequest.prototype._pcProgressPatched = false;
     };
 }
 
 export function loadAssets(app, assetList, onComplete, onProgress) {
     if (!assetList || !assetList.length) {
-        if (onProgress) onProgress(1);
-        if (onComplete) onComplete(null);
+        onProgress?.(1);
+        onComplete?.(null);
         return;
     }
 
@@ -234,18 +199,14 @@ export function loadAssets(app, assetList, onComplete, onProgress) {
         assetList.reduce((sum, i) => sum + (i.size || 0), 0) ||
         assetList.length;
 
-    assetList.forEach((i) => {
-        i.loadedBytes = 0;
-    });
+    for (const i of assetList) i.loadedBytes = 0;
 
     let rafId = 0;
     let pending = false;
 
-    function emitProgress(p) {
-        if (onProgress) onProgress(p);
-    }
+    const emitProgress = (p) => onProgress?.(p);
 
-    function recalcProgress() {
+    const recalcProgress = () => {
         if (pending) return;
         pending = true;
 
@@ -253,19 +214,15 @@ export function loadAssets(app, assetList, onComplete, onProgress) {
             pending = false;
 
             let loaded = 0;
-            for (const info of assetList) {
-                loaded += info.loadedBytes || 0;
-            }
+            for (const info of assetList) loaded += info.loadedBytes || 0;
 
             let p = totalSize > 0 ? loaded / totalSize : 1;
             if (!isFinite(p) || isNaN(p)) p = 0;
-            p = Math.max(0, Math.min(1, p));
-
-            emitProgress(p);
+            emitProgress(Math.max(0, Math.min(1, p)));
         });
-    }
+    };
 
-    function onBytes(info, absLoaded) {
+    const onBytes = (info, absLoaded) => {
         if (!info || !info.size) return;
 
         const size = info.size;
@@ -275,7 +232,7 @@ export function loadAssets(app, assetList, onComplete, onProgress) {
             info.loadedBytes = clamped;
             recalcProgress();
         }
-    }
+    };
 
     const resolveInfo = createUrlResolver(assetList);
     const restoreNetwork = patchNetworkProgress(resolveInfo, onBytes);
@@ -285,9 +242,7 @@ export function loadAssets(app, assetList, onComplete, onProgress) {
         restoreNetwork();
 
         for (const info of assetList) {
-            if (info.size && !(info.loadedBytes > 0)) {
-                info.loadedBytes = info.size;
-            }
+            if (info.size && !(info.loadedBytes > 0)) info.loadedBytes = info.size;
         }
 
         if (rafId) {
@@ -295,8 +250,8 @@ export function loadAssets(app, assetList, onComplete, onProgress) {
             rafId = 0;
             pending = false;
         }
-        
+
         recalcProgress();
-        if (onComplete) onComplete(err || null);
+        onComplete?.(err || null);
     });
 }

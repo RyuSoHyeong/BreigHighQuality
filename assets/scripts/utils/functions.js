@@ -2,11 +2,17 @@ export function delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+export function clamp01(v) {
+    if (!isFinite(v) || isNaN(v)) return 0;
+    return Math.max(0, Math.min(1, v));
+}
+
+export function mapAssetProgress(assetProgress01, assetProgressWeight) {
+    return clamp01(assetProgress01) * clamp01(assetProgressWeight);
+}
+
 export function createSmoothProgress(setProgress, options = {}) {
-    const {
-        speed = 8,
-        snapEps = 0.001
-    } = options;
+    const { speed = 8, snapEps = 0.001 } = options;
 
     let current = 0;
     let target = 0;
@@ -23,22 +29,17 @@ export function createSmoothProgress(setProgress, options = {}) {
         const k = 1 - Math.exp(-speed * dt);
         current = current + (target - current) * k;
 
-        if (Math.abs(target - current) <= snapEps) {
-            current = target;
-        }
+        if (Math.abs(target - current) <= snapEps) current = target;
 
         setProgress(current);
 
-        if (current !== target) {
-            requestAnimationFrame(tick);
-        } else {
-            running = false;
-        }
+        if (current !== target) requestAnimationFrame(tick);
+        else running = false;
     };
 
     return {
         setTarget(value01) {
-            const v = Math.max(0, Math.min(1, value01));
+            const v = clamp01(value01);
             target = Math.max(target, v);
             if (!running) {
                 running = true;
@@ -47,21 +48,12 @@ export function createSmoothProgress(setProgress, options = {}) {
             }
         },
         setNow(value01) {
-            const v = Math.max(0, Math.min(1, value01));
+            const v = clamp01(value01);
             current = v;
             target = v;
             setProgress(v);
         }
     };
-}
-
-export function clamp01(v) {
-    if (!isFinite(v) || isNaN(v)) return 0;
-    return Math.max(0, Math.min(1, v));
-}
-
-export function mapAssetProgress(assetProgress01, assetProgressWeight) {
-    return clamp01(assetProgress01) * clamp01(assetProgressWeight);
 }
 
 export function loadLODSmooth(app, gs, options = {}) {
@@ -74,78 +66,75 @@ export function loadLODSmooth(app, gs, options = {}) {
     } = options;
 
     const startTime = performance.now();
-    const gsplat = app.scene.gsplat;
+    const sceneGs = app.scene.gsplat;
 
-    function step() {
+    const forceGsplatRefresh = () => {
+        const max = sceneGs.lodRangeMax;
+        sceneGs.lodRangeMax = max - 1;
+        sceneGs.lodRangeMax = max;
+    };
+
+    const step = () => {
         const t = Math.min((performance.now() - startTime) / duration, 1);
         const k = t * t * (3 - 2 * t);
 
         gs.splatBudget = Math.round(pc.math.lerp(startBudget, endBudget, k));
 
         const newMin = Math.round(pc.math.lerp(startLodMin, endLodMin, k));
-        if (gsplat.lodRangeMin !== newMin) {
-            gsplat.lodRangeMin = newMin;
-
-            const max = gsplat.lodRangeMax;
-            gsplat.lodRangeMax = max - 1;
-            gsplat.lodRangeMax = max;
+        if (sceneGs.lodRangeMin !== newMin) {
+            sceneGs.lodRangeMin = newMin;
+            forceGsplatRefresh();
         }
 
-        if (t < 1) {
-            requestAnimationFrame(step);
-            return;
+        if (t < 1) requestAnimationFrame(step);
+        else {
+            gs.splatBudget = endBudget;
+            if (sceneGs.lodRangeMin !== endLodMin) {
+                sceneGs.lodRangeMin = endLodMin;
+                forceGsplatRefresh();
+            }
         }
-
-        gs.splatBudget = endBudget;
-
-        if (gsplat.lodRangeMin !== endLodMin) {
-            gsplat.lodRangeMin = endLodMin;
-            const max = gsplat.lodRangeMax;
-            gsplat.lodRangeMax = max - 1;
-            gsplat.lodRangeMax = max;
-        }
-    }
+    };
 
     step();
 }
 
 export function waitForGsplatsGate(app, options) {
-    const {
-        threshold,
-        assetProgressWeight,
-        onProgress,
-        onReady
-    } = options;
+    const { threshold, assetProgressWeight, onProgress, onReady } = options;
 
+    const prevStatsEnabled = !!app.stats.enabled;
     app.stats.enabled = true;
+
+    const base = clamp01(assetProgressWeight);
+    const inv = 1 - base;
+    const target = Math.max(1, threshold);
 
     const update = () => {
         const gsplats = app.stats?.frame?.gsplats || 0;
-        const k = clamp01(gsplats / Math.max(1, threshold));
-        const progress = clamp01(assetProgressWeight) + (1 - clamp01(assetProgressWeight)) * k;
-
-        if (onProgress) onProgress(progress);
+        const k = clamp01(gsplats / target);
+        onProgress?.(base + inv * k);
 
         if (gsplats >= threshold) {
             app.off('update', update);
-            if (onReady) onReady();
+            app.stats.enabled = prevStatsEnabled;
+            onReady?.();
         }
     };
 
     app.on('update', update);
-    app.once('destroy', () => app.off('update', update));
+    app.once('destroy', () => {
+        app.off('update', update);
+        app.stats.enabled = prevStatsEnabled;
+    });
 }
 
 export function createDebugStatsOverlayUpdater(app, options) {
-    const {
-        elementId = 'debug-stats',
-        gs,
-        fpsLockerState
-    } = options;
+    const { elementId = 'debug-stats', gs, fpsLockerState } = options;
 
     const el = document.getElementById(elementId);
     if (!el) return () => {};
 
+    const prevStatsEnabled = !!app.stats.enabled;
     app.stats.enabled = true;
 
     let lastTime = performance.now();
@@ -159,7 +148,6 @@ export function createDebugStatsOverlayUpdater(app, options) {
         const renderedFrames = renderCount - lastRenderCount;
 
         const fps = Math.round((renderedFrames * 1000) / (now - lastTime));
-
         lastRenderCount = renderCount;
         lastTime = now;
 
@@ -167,9 +155,7 @@ export function createDebugStatsOverlayUpdater(app, options) {
         const splatsText = (typeof gsplats === 'number') ? gsplats.toLocaleString() : 'n/a';
 
         const budgetValue = gs?.splatBudget;
-        const budgetText =
-            (typeof budgetValue === 'number') ? budgetValue.toLocaleString() :
-            (budgetValue ?? 'n/a');
+        const budgetText = (typeof budgetValue === 'number') ? budgetValue.toLocaleString() : (budgetValue ?? 'n/a');
 
         const sceneGs = app.scene?.gsplat;
         const lodText = sceneGs ? `${sceneGs.lodRangeMin} → ${sceneGs.lodRangeMax}` : '-';
@@ -185,6 +171,7 @@ export function createDebugStatsOverlayUpdater(app, options) {
 
     return () => {
         app.off('update', update);
+        app.stats.enabled = prevStatsEnabled;
     };
 }
 
@@ -194,13 +181,11 @@ export function getDeviceProfile({ isMobile, isTablet, profiles }) {
     return profiles.desktop;
 }
 
-export function finalizeStart({ reveal, setSplashProgress, hideSplash, setupFullscreenButton, loadLanguage}) {
+export function finalizeStart({ reveal, setSplashProgress, hideSplash, setupFullscreenButton, loadLanguage }) {
     setSplashProgress(1);
     hideSplash();
 
-    const startScreen = document.getElementById('start-screen');
-    if (startScreen) startScreen.remove();
-
+    document.getElementById('start-screen')?.remove();
     document.querySelector('.mode-panel')?.classList.remove('hidden');
     document.getElementById('fps-locker')?.classList.remove('hidden');
     document.getElementById('debug-stats')?.classList.remove('hidden');
@@ -210,6 +195,8 @@ export function finalizeStart({ reveal, setSplashProgress, hideSplash, setupFull
         reveal.enabled = true;
     }
 
-    setupFullscreenButton();
+    const destroyFullscreen = setupFullscreenButton();
     loadLanguage();
+
+    return destroyFullscreen;
 }

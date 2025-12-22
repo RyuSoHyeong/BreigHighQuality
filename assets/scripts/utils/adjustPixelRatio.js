@@ -5,10 +5,13 @@ AdjustPixelRatio.attributes.add('scalePC', { type: 'number', default: 1 });
 
 AdjustPixelRatio.prototype.initialize = function () {
     const app = this.app;
-    const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const nativeRatio = window.devicePixelRatio || 1;
-    const scale = isMobile ? this.scaleMobile : this.scalePC;
+    const gd = app?.graphicsDevice;
+    if (!gd) return;
 
-    app.graphicsDevice.maxPixelRatio = nativeRatio * scale;
+    const nativeRatio = window.devicePixelRatio || 1;
+    const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const scale = isMobileDevice ? this.scaleMobile : this.scalePC;
+
+    gd.maxPixelRatio = nativeRatio * scale;
     app.resizeCanvas();
 };
