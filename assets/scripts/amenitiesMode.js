@@ -229,6 +229,7 @@ AmenitiesMode.prototype.parseCsv = function (csvText) {
                 <img class="amenities-icon" src="${icon}" />
                 <div class="amenities-text">${title}</div>
             </div>
+            <div class="amenities-line"></div>
         `;
 
         dom.style.position = 'absolute';

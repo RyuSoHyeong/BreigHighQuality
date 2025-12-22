@@ -343,31 +343,63 @@ button,
     justify-content: center;
     align-items: center;
     z-index: 0;
+    border-radius: 999px;
     will-change: transform;
 }
 
 @media (hover: hover) and (pointer: fine) {
     .amenities .panel-container,
-    .amenities .glass-panel {
+    .amenities .glass-panel,
+    .amenities .amenities-line {
         transition: transform 0.2s ease;
         transform-origin: center;
     }
 
     .amenities:hover .panel-container,
-    .amenities:hover .glass-panel { transform: scale(1.1); }
+    .amenities:hover .glass-panel,
+    .amenities:hover .amenities-line {
+        transform: scale(1.1);
+    }
 }
 
-.amenities .panel-container { gap: 8px; padding: 0 8px 0 0; }
+
+.amenities .panel-container { position: relative; gap: 8px; padding: 0 8px 0 0; z-index: 2; }
 
 .amenities .glass-panel {
     background-color: rgba(75, 75, 75, 0.8);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+    z-index: 0;
 }
 
 .amenities .border-shadow {
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: none;
     filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.5));
+}
+
+.amenities-line {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 3;
+    padding: 2px;
+    background:
+        linear-gradient(
+            170deg,
+            rgb(160, 160, 160) 0%,
+            rgba(160, 160, 160,0) 50%,
+            rgba(160, 160, 160,0) 100%
+        ) top left / 100% 100% no-repeat;
+
+    -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
 }
 
 .amenities-border { border-radius: 999px; }
@@ -585,6 +617,9 @@ button,
     .amenities .panel-container { gap: 4px; padding: 0 4px 0 0; }
     .amenities-icon { width: 18px; height: 18px; }
     .amenities-text { font-size: 9px; padding-right: 4px; }
+    .amenities-line {
+        padding: 1px;
+    }
 
     #fullscreen-button { right: 18px; }
 
@@ -622,10 +657,13 @@ button,
     .state-panel .panel-container { gap: 8px; padding: 0 6px; }
     .state-panel .button { padding: 6px 8px; font-size: 12px; border-radius: 4px; transition: none; }
 
-    .amenities { height: 18px; }
+    .amenities { height: 22px; }
     .amenities .panel-container { gap: 4px; padding: 0 4px 0 0; }
-    .amenities-icon { width: 18px; height: 18px; }
-    .amenities-text { font-size: 9px; padding-right: 4px; }
+    .amenities-icon { width: 22px; height: 22px; }
+    .amenities-text { font-size: 10px; padding-right: 4px; }
+    .amenities-line {
+        padding: 1px;
+    }
 
     #info-panel { top: 60px; right: 10px; width: 175px; height: 205px; }
     #info-panel .border-shadow { border-radius: 6px; }

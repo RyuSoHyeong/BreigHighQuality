@@ -70,7 +70,7 @@ const DEVICE_PROFILES = {
     phone: {
         enableUpgrade: true,
         upgradeDelayMs: 7000,
-        upgradedLodDistances: [14, 20, 28, 34, 38],
+        upgradedLodDistances: [10, 20, 30, 40, 50],
         lodSmooth: { duration: 5000, endBudget: 700000, endLodMin: 2 }
     },
     tablet: {
@@ -82,7 +82,7 @@ const DEVICE_PROFILES = {
     desktop: {
         enableUpgrade: true,
         upgradeDelayMs: 7000,
-        upgradedLodDistances: [20, 35, 60, 80, 100],
+        upgradedLodDistances: [20, 40, 60, 80, 100],
         lodSmooth: { duration: 5000, endBudget: 2000000, endLodMin: 0 }
     }
 };
@@ -165,7 +165,8 @@ function createScene() {
     root.addComponent('script');
     root.script.create('gallery', { attributes: { galleryTextAsset: assets.galleryCsv } });
     root.script.create('amenitiesMode', { attributes: { fpsLockerState: fpsLocker.state } });
-    root.script.create('adjustPixelRatio');
+    const adjustPixelRatio = root.script.create('adjustPixelRatio');
+    adjustPixelRatio.fpsLockerState = fpsLocker.state;
 
     app.root.addChild(root);
 

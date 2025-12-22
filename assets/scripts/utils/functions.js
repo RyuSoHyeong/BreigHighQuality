@@ -129,16 +129,46 @@ export function waitForGsplatsGate(app, options) {
 }
 
 export function createDebugStatsOverlayUpdater(app, options) {
-    const { elementId = 'debug-stats', gs, fpsLockerState } = options;
+    const { elementId = 'debug-stats', fpsLockerState, gs } = options || {};
 
     const el = document.getElementById(elementId);
-    if (!el) return () => {};
+    if (!el || !app) return () => {};
 
     const prevStatsEnabled = !!app.stats.enabled;
-    app.stats.enabled = true;
 
-    let lastTime = performance.now();
-    let lastRenderCount = fpsLockerState?.renderFrameCounter || 0;
+    let isRunning = false;
+    let lastTime = 0;
+    let lastRenderCount = 0;
+
+    const start = () => {
+        if (isRunning) return;
+        isRunning = true;
+
+        app.stats.enabled = true;
+
+        lastTime = performance.now();
+        lastRenderCount = fpsLockerState?.renderFrameCounter || 0;
+
+        app.on('update', update);
+    };
+
+    const stop = () => {
+        if (!isRunning) return;
+        isRunning = false;
+
+        app.off('update', update);
+        app.stats.enabled = prevStatsEnabled;
+    };
+
+    const isHidden = () => {
+        if (el.classList.contains('hidden')) return true;
+
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return true;
+
+        const rect = el.getBoundingClientRect();
+        return rect.width === 0 || rect.height === 0;
+    };
 
     const update = () => {
         const now = performance.now();
@@ -155,7 +185,9 @@ export function createDebugStatsOverlayUpdater(app, options) {
         const splatsText = (typeof gsplats === 'number') ? gsplats.toLocaleString() : 'n/a';
 
         const budgetValue = gs?.splatBudget;
-        const budgetText = (typeof budgetValue === 'number') ? budgetValue.toLocaleString() : (budgetValue ?? 'n/a');
+        const budgetText = (typeof budgetValue === 'number')
+            ? budgetValue.toLocaleString()
+            : (budgetValue ?? 'n/a');
 
         const sceneGs = app.scene?.gsplat;
         const lodText = sceneGs ? `${sceneGs.lodRangeMin} → ${sceneGs.lodRangeMax}` : '-';
@@ -167,11 +199,22 @@ export function createDebugStatsOverlayUpdater(app, options) {
             `LOD: ${lodText}`;
     };
 
-    app.on('update', update);
+    const onVisibilityCheck = () => {
+        if (isHidden()) stop();
+        else start();
+    };
+
+    let observer = null;
+    if (typeof MutationObserver !== 'undefined') {
+        observer = new MutationObserver(onVisibilityCheck);
+        observer.observe(el, { attributes: true, attributeFilter: ['class', 'style'] });
+    }
+
+    onVisibilityCheck();
 
     return () => {
-        app.off('update', update);
-        app.stats.enabled = prevStatsEnabled;
+        if (observer) observer.disconnect();
+        stop();
     };
 }
 
